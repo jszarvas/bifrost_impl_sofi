@@ -1,0 +1,7 @@
+#!/bin/bash
+
+
+export SINGULARITY_TMPDIR=/opts/bifrost/tmp/singularity
+export SINGULARITY_CACHEDIR=/opts/bifrost/tmp/singularity/cache
+export SINGULARITY_DOCKER_USERNAME=User
+export SINGULARITY_DOCKER_PASSWORD=Password
