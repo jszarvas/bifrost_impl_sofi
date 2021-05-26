@@ -22,20 +22,22 @@ RUN_PATH=$BIFROST_INSTITUTION/$BIFROST_YEAR/$BIFROST_RUN_NAME
 BIFROST_RUN_DIR=$BIFROST_OUTPUT_DIR/$RUN_PATH
 BIFROST_READS_DIR=$BIFROST_RAW_DATA_MNT/$RUN_PATH
 
-[ -d $BIFROST_RUN_DIR ] || mkdir  $BIFROST_RUN_DIR
+[ -d $BIFROST_RUN_DIR ] || mkdir -p $BIFROST_RUN_DIR
 cd $BIFROST_RUN_DIR
 ln -s $BIFROST_READS_DIR samples
+
+module load $ANACONDA_VERSION;
 
 if [ -f "samples/run_metadata.xlsx" ]
 then
     echo "converting run_metadata.xlsx to tsv"
-    module load $ANACONDA_VERSION;
     $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' $BIFROST_READS_DIR/run_metadata.xlsx > $BIFROST_READS_DIR/run_metadata.tsv;
 fi
 if [ -f "samples/run_metadata.tsv" ]
 then
     python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_READS_DIR/run_metadata.tsv -out $BIFROST_READS_DIR/run_metadata.tsv
 fi
+module unload $ANACONDA_VERSION;
 
 #cd /home/projects/ssi_disease_surveillance/data/test_script/bifrost_test_data
 # Cleanup from last attempt

@@ -9,6 +9,5 @@ module load tools
 module load singularity/3.6.4
 source ../../settings/singularity_settings.sh
 
-echo "Downloading $1__$2"
-echo "singularity build -F --sandbox $1__$2 docker://ssidk/$1:$2"
-singularity build -F --sandbox $1__$2 docker://ssidk/$1:$2
+echo "singularity run --info $1__$2"
+singularity run $1__$2 --info

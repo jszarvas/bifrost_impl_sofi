@@ -13,7 +13,7 @@ cd $SAMPLE;
 
 # First job is dependant on start, second job on first job and so on
 SAMPLE_PIPELINE_ID=$BIFROST_SAMPLE_START_ID
-for PIPELINE in ${BIFROST_COMPONENT_LIST[@]}
+for PIPELINE in $BIFROST_COMPONENTS
 do
 echo "SAMPLE_PIPELINE_ID: $SAMPLE_PIPELINE_ID"
 SAMPLE_PIPELINE_ID=$(\

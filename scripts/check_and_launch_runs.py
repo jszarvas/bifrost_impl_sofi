@@ -63,14 +63,14 @@ def get_year_folders(dirname):
 def get_institution_year_folders(dirname):
     institution_year_run_folders = []
     for institution in os.listdir(dirname):
-        institution_path = os.path.join(dirname,institution)
-        for year in os.listdir(institution_path):
-        # Will stop working on 2100, sorry.
-            if re.match("20\d\d", year) is not None:
-                year_path = os.path.join(institution_path, year)
-                for run_folder in os.listdir(year_path):
-                    # If run folders should be filtered, do it here
-                    institution_year_run_folders.append((institution, year, run_folder))
+        institution_path = os.path.join(dirname, institution)
+        if os.path.isdir(institution_path):
+            for year in os.listdir(institution_path):
+                if re.match("20\d\d", year) is not None:
+                    year_path = os.path.join(institution_path, year)
+                    for run_folder in os.listdir(year_path):
+                        # If run folders should be filtered, do it here
+                        institution_year_run_folders.append((institution, year, run_folder))
     return institution_year_run_folders # List of [(institution, year, run_folder)]
 
 def main(args: Dict) -> None:
@@ -95,7 +95,7 @@ def main(args: Dict) -> None:
     print("Running:")
     for institution, year, run_name in to_run:
         print(f"{institution}\t{year}\t{run_name}")
-        launch_bifrost(args["script_dir"], args["log_dir"], args["settings_dir"], year, run_name)
+        launch_bifrost(args["script_dir"], args["log_dir"], args["settings_dir"], institution, year, run_name)
 
 if __name__ == '__main__':
 
