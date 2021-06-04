@@ -4,10 +4,10 @@
 #PBS -W group_list=fvst_ssi_dtu
 #PBS -W x=advres:fvst_ssi_dtu_wiki_fodevarestyrelsen.16
 
-cd /home/projects/fvst_ssi_dtu/test_app/scripts/singularity
+cd $BASE_DIR/singularity
 module load tools
 module load singularity/3.6.4
-source ../../settings/singularity_settings.sh
+source $BASE_DIR/settings/singularity_settings.sh
 
 echo "Downloading $1__$2"
 echo "singularity build -F --sandbox $1__$2 docker://ssidk/$1:$2"
