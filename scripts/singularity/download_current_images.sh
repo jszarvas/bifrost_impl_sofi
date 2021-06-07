@@ -12,7 +12,7 @@ module load $SINGULARITY_VERSION
 source $BASE_DIR/settings/singularity_settings.sh
 
 #re="^(.*?)__(.*)$"
-for image in $BIFROST_COMPONENTS; do
+for image in  $BIFROST_RUN_LAUNCHER $BIFROST_COMPONENTS; do
     name=${image%%__*}
     version=${image#*__}
     echo "Downloading ${name}__${version}"
