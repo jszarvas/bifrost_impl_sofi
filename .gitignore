@@ -1,2 +1,5 @@
 settings/*.sh
+scripts/singularity/*.sh.e*
+scripts/singularity/*.sh.o*
+scripts/singularity/bifrost_*
 
