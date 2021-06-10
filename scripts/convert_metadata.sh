@@ -1,4 +1,4 @@
-source /home/projects/fvst_ssi_dtu/test_apps/settings/env_vars.sh
+source $BASE_DIR/settings/env_vars.sh
 module load $ANACONDA_VERSION
 
 python $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' run_metadata.xlsx > run_metadata.tsv
