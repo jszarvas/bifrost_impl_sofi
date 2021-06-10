@@ -16,7 +16,8 @@ for image in $BIFROST_COMPONENTS; do
     name=${image%%__*}
     version=${image#*__}
     echo "Downloading ${name}__${version}"
-    echo "singularity build -F --sandbox ${name}__${version} docker://ssidk/${name}:${version}"
+    echo "singularity build -F ${name}__${version} docker://ssidk/${name}:${version}"
     singularity build -F --sandbox ${name}__${version} docker://ssidk/${name}:${version}
+    echo "singularity run ${name}__${version} --info"
     singularity run ${name}__${version} --info
 done

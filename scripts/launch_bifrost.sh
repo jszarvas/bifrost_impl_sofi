@@ -35,7 +35,7 @@ then
 fi
 if [ -f "samples/run_metadata.tsv" ]
 then
-    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_READS_DIR/run_metadata.tsv -out $BIFROST_READS_DIR/run_metadata.tsv
+    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_READS_DIR/run_metadata.tsv -out $BIFROST_READS_DIR/run_metadata.clean.tsv
 fi
 module unload $ANACONDA_VERSION;
 
@@ -45,6 +45,7 @@ module unload $ANACONDA_VERSION;
 # rm -dr S1
 # rm run.yaml
 # rm samples.yaml
+
 
 
 singularity run \
@@ -60,7 +61,7 @@ $BIFROST_READS_DIR \
         -post $BIFROST_SCRIPT_DIR/launcher_scripts/post.sh \
         -colmap $BIFROST_SETTINGS_DIR/colmap.json \
         -reads $BIFROST_RUN_DIR/samples \
-        -meta $BIFROST_READS_DIR/run_metadata.tsv \
+        -meta $BIFROST_READS_DIR/run_metadata.clean.tsv \
         -name $BIFROST_RUN_NAME \
         -out $BIFROST_RUN_DIR \
 
