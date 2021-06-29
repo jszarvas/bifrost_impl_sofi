@@ -117,7 +117,11 @@ def species_convert(args: object) -> None:
     samples_no_index = df[df[sample_key].isna()].index
     df = df.drop(samples_no_index)
 
-    df["Organism"] = df["Organism"].str.replace(" ", "").str.upper().map(capital_species_translation_dict)
+    if key in ("Organism", "provided species"):
+        try:
+            df["Organism"] = df["Organism"].str.replace(" ", "").str.upper().map(capital_species_translation_dict)
+        except KeyError:
+            pass
     df.to_csv(args.output, sep="\t", index=False)
 
 if __name__ == "__main__":

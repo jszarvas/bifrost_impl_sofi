@@ -9,6 +9,7 @@ cd $BASE_DIR/scripts/singularity
 module load tools
 module load singularity/3.6.4
 source $BASE_DIR/settings/singularity_settings.sh
+source $BASE_DIR/settings/env_vars.sh
 
 echo "singularity run --info $1__$2"
 singularity run $1__$2 --info

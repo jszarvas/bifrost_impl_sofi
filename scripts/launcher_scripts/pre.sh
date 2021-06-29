@@ -15,7 +15,8 @@ qsub \
 -N "bf_$run.name" \
 -d $PWD \
 -l nodes=1:ppn=1,mem=1gb,walltime=$BIFROST_JOB_TIME \
--W x=advres:$BIFROST_RESNODES
+-W x=advres:$BIFROST_RESNODES \
+-W umask=002
 );
 BIFROST_SAMPLE_JOB_IDS=$BIFROST_SAMPLE_START_ID
 echo "BIFROST_SAMPLE_JOB_IDS: $BIFROST_SAMPLE_JOB_IDS"

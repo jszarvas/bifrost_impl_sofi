@@ -28,7 +28,7 @@ ln -s $BIFROST_READS_DIR samples
 
 module load $ANACONDA_VERSION;
 
-if [ -f "samples/run_metadata.xlsx" ]
+if [ -f "samples/run_metadata.xlsx" && ! -f "samples/run_metadata.tsv" ]
 then
     echo "converting run_metadata.xlsx to tsv"
     $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' $BIFROST_READS_DIR/run_metadata.xlsx > $BIFROST_READS_DIR/run_metadata.tsv;

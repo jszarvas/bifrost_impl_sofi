@@ -1,1 +1,2 @@
 On computerome singularity cannot run on the login node, so submit the scripts to the dedicated nodes using qsub.
+$BASE_DIR must be set

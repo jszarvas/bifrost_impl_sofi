@@ -37,6 +37,7 @@ $BIFROST_PIPELINE_TOOLS/$PIPELINE \
 qsub -d $PWD \
 -A $BIFROST_JOB_ACCOUNT \
 -W depend=afterany:$SAMPLE_PIPELINE_ID \
+-W umask=002 \
 -N "${SAMPLE}_${PIPELINE}_bf" \
 -W x=advres:$BIFROST_RESNODES \
 -l nodes=1:ppn=$BIFROST_JOB_CPUS,mem=$BIFROST_JOB_MEM,walltime=$BIFROST_JOB_TIME \

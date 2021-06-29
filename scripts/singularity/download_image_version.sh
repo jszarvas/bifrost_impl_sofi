@@ -5,11 +5,21 @@
 #PBS -W x=advres:fvst_ssi_dtu_wiki_fodevarestyrelsen.16
 #PBS -v BASE_DIR
 
+if [ "x$BASE_DIR" == "x" ]; then
+    echo "\$BASE_DIR not set. Exiting"
+    exit
+fi
+
 cd $BASE_DIR/scripts/singularity
+source $BASE_DIR/settings/env_vars.sh
+
 module load tools
-module load singularity/3.6.4
+module load $SINGULARITY_VERSION
 source $BASE_DIR/settings/singularity_settings.sh
 
 echo "Downloading $1__$2"
 echo "singularity build --sandbox -F $1__$2 docker://ssidk/$1:$2"
 singularity build --sandbox -F $1__$2 docker://ssidk/$1:$2
+
+echo "singularity run --info $1__$2"
+singularity run $1__$2 --info

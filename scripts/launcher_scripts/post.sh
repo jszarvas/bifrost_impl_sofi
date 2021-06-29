@@ -11,6 +11,7 @@ touch complete.txt
 qsub \
 -W x=advres:$BIFROST_RESNODES \
 -W depend=afterany:$BIFROST_SAMPLE_JOB_IDS \
+-W umask=002 \
 -A $BIFROST_JOB_ACCOUNT \
 -N "post_$run.name" \
 -d $PWD \

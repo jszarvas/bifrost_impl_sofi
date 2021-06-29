@@ -5,6 +5,11 @@
 #PBS -W x=advres:fvst_ssi_dtu_wiki_fodevarestyrelsen.16
 #PBS -v BASE_DIR
 
+if [ "x$BASE_DIR" == "x" ]; then
+    echo "\$BASE_DIR not set. Exiting"
+    exit
+fi
+
 cd $BASE_DIR/scripts/singularity
 source $BASE_DIR/settings/env_vars.sh
 
@@ -12,7 +17,6 @@ module load tools
 module load $SINGULARITY_VERSION
 source $BASE_DIR/settings/singularity_settings.sh
 
-#re="^(.*?)__(.*)$"
 for image in  $BIFROST_RUN_LAUNCHER $BIFROST_COMPONENTS; do
     name=${image%%__*}
     version=${image#*__}

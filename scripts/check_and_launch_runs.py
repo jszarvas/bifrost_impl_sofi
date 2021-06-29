@@ -39,7 +39,7 @@ from typing import Set, List, Text, Dict
 
 def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution: str, year: str, run_name: str) -> None:
     command: str = f'cd {script_dir};\
- qsub -N "bf_launch_{run_name}" -e {log_dir} -o {log_dir} -F "{institution} {year} {run_name} {settings_dir}" {script_dir}/launch_bifrost.sh '
+ qsub -W umask=002 -N "bf_launch_{run_name}" -e {log_dir} -o {log_dir} -F "{institution} {year} {run_name} {settings_dir}" {script_dir}/launch_bifrost.sh '
     process: subprocess.Popen = subprocess.Popen(command,
                                                  stdout=subprocess.PIPE,
                                                  stderr=subprocess.STDOUT,
