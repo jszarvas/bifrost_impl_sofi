@@ -28,13 +28,14 @@ ln -s $BIFROST_READS_DIR samples
 
 module load $ANACONDA_VERSION;
 
-if [ -f "samples/run_metadata.xlsx" && ! -f "samples/run_metadata.tsv" ]
+if [[ -f "$BIFROST_READS_DIR/run_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/run_metadata.tsv" ]]
 then
     echo "converting run_metadata.xlsx to tsv"
     $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' $BIFROST_READS_DIR/run_metadata.xlsx > $BIFROST_READS_DIR/run_metadata.tsv;
 fi
-if [ -f "samples/run_metadata.tsv" ]
+if [ -f "$BIFROST_READS_DIR/run_metadata.tsv" ]
 then
+    echo "cleaning up species names in run_metadata.tsv"
     python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_READS_DIR/run_metadata.tsv -out $BIFROST_READS_DIR/run_metadata.clean.tsv
 fi
 module unload $ANACONDA_VERSION;
