@@ -1,0 +1,3 @@
+export ENTEROBASE_SERVER=https://enterobase.warwick.ac.uk
+export ENTEROBASE_USERNAME=XXX
+export ENTEROBASE_PASSWORD=XXX

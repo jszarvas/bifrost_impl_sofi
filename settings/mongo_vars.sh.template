@@ -1,0 +1,1 @@
+export BIFROST_DB_KEY="mongodb://user:pass@dbserver:27017/dbname?authSource=admin";

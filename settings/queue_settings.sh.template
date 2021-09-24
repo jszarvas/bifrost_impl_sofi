@@ -1,0 +1,5 @@
+export BIFROST_JOB_ACCOUNT="job_account_name";
+export BIFROST_RESNODES="reserved_nodes";
+export BIFROST_JOB_MEM="12gb";
+export BIFROST_JOB_CPUS=4;
+export BIFROST_JOB_TIME="03:00:00";
