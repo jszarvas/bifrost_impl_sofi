@@ -1,0 +1,6 @@
+[submodule "xlsx2csv"]
+	path = xlsx2csv
+	url = http://github.com/dilshod/xlsx2csv
+[submodule "scripts/xlsx2csv"]
+	path = scripts/xlsx2csv
+	url = http://github.com/dilshod/xlsx2csv
