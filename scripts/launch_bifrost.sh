@@ -26,18 +26,28 @@ BIFROST_READS_DIR=$BIFROST_RAW_DATA_MNT/$RUN_PATH
 cd $BIFROST_RUN_DIR
 ln -s $BIFROST_READS_DIR samples
 
+
 module load $ANACONDA_VERSION;
 
 if [[ -f "$BIFROST_READS_DIR/run_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/run_metadata.tsv" ]]
 then
     echo "converting run_metadata.xlsx to tsv"
-    $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' $BIFROST_READS_DIR/run_metadata.xlsx > $BIFROST_READS_DIR/run_metadata.tsv;
+    $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' $BIFROST_READS_DIR/run_metadata.xlsx > $BIFROST_RUN_DIR/run_metadata.tsv;
 fi
 if [ -f "$BIFROST_READS_DIR/run_metadata.tsv" ]
 then
-    echo "cleaning up species names in run_metadata.tsv"
-    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_READS_DIR/run_metadata.tsv -out $BIFROST_READS_DIR/run_metadata.clean.tsv
+    cp $BIFROST_READS_DIR/run_metadata.tsv $BIFROST_RUN_DIR/run_metadata.tsv;
 fi
+
+if [ -f "$BIFROST_RUN_DIR/run_metadata.tsv" ]
+then
+    echo "cleaning up species names in run_metadata.tsv"
+    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_RUN_DIR/run_metadata.tsv -out $BIFROST_RUN_DIR/run_metadata.clean.tsv
+else
+    echo "$BIFROST_RUN_DIR/run_metadata.tsv not found! Exiting!"
+    exit
+fi
+
 module unload $ANACONDA_VERSION;
 
 #cd /home/projects/ssi_disease_surveillance/data/test_script/bifrost_test_data
@@ -62,7 +72,7 @@ $BIFROST_READS_DIR \
         -post $BIFROST_SCRIPT_DIR/launcher_scripts/post.sh \
         -colmap $BIFROST_SETTINGS_DIR/colmap.json \
         -reads $BIFROST_RUN_DIR/samples \
-        -meta $BIFROST_READS_DIR/run_metadata.clean.tsv \
+        -meta $BIFROST_RUN_DIR/run_metadata.clean.tsv \
         -name $BIFROST_RUN_NAME \
         -out $BIFROST_RUN_DIR \
 
