@@ -7,3 +7,5 @@ scripts/singularity/build-temp-*
 *~
 logs/*
 *.bak
+*.sh.e*
+*.sh.o*
