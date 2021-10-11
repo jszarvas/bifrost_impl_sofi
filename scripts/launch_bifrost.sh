@@ -36,6 +36,7 @@ then
 fi
 if [ -f "$BIFROST_READS_DIR/run_metadata.tsv" ]
 then
+    echo "copying run_metadata.tsv to run_dir"
     cp $BIFROST_READS_DIR/run_metadata.tsv $BIFROST_RUN_DIR/run_metadata.tsv;
 fi
 
