@@ -1,0 +1,17 @@
+Plan for permissions
+
+Installation root (/home/projects/fvst_ssi_dtu/) is owned by group fvst_ssi_dtu with permissions 770 to restrict access members of that group only.
+
+__test_app__: the subdirectories: log, scripts and settings all have group ownership fvst_admins and permissions 775 plus setgid (chmod g+s).
+
+umask is set to 002, denying write access to users not in group fvst_admins.
+
+Settings scripts with credentials have permissions 770 other scripts have permissions 775.
+
+__test_data__: 
+	       seqdata: group fvst_admins permissions 664 +x for directories
+	       output: group fvst_admins permissions 664 +x for directories and scripts
+
+The result should be that fvst_admins have read/write on everything (and execute where appropriate), regardless of owner, while the 
+fvst_ssi_dtu users have read access (and execute on some things).
+
