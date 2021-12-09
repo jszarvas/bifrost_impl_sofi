@@ -122,7 +122,7 @@ def main(args: Dict) -> None:
         launch_bifrost(args["script_dir"], args["log_dir"], args["settings_dir"], institution, year, run_name)
 
     # chewieSnake
-    print()
+"""     print()
     print("Update ChewieSnake sample lists")
     script_dir = Path(args["script_dir"])
     log_dir = Path(args["log_dir"])
@@ -153,7 +153,7 @@ def main(args: Dict) -> None:
             print(f"Pipeline status OK - submit chewieSnake job for {species}")
             launch_chewiesnake(script_dir, species_dir, log_dir)
         else:
-            print(f"A ChewieSnake pipeline appears to be running for {species} already - skipping this step.")
+            print(f"A ChewieSnake pipeline appears to be running for {species} already - skipping this step.") """
 
 if __name__ == '__main__':
 
