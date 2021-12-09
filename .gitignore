@@ -5,7 +5,8 @@ scripts/singularity/*.sh.o*
 scripts/singularity/bifrost_*
 scripts/singularity/build-temp-*
 *~
-logs/*
+logs/
+tmp/
 *.bak
 *.sh.e*
 *.sh.o*
