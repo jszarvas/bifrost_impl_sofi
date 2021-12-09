@@ -1,7 +1,6 @@
 #!/bin/bash
 
-
-export SINGULARITY_TMPDIR=/opts/bifrost/tmp/singularity
-export SINGULARITY_CACHEDIR=/opts/bifrost/tmp/singularity/cache
-export SINGULARITY_DOCKER_USERNAME=User
-export SINGULARITY_DOCKER_PASSWORD=Password
+export SINGULARITY_TMPDIR=/home/projects/fvst_ssi_dtu/test_app/tmp/$USER/sing_tmp
+export SINGULARITY_CACHEDIR=/home/projects/fvst_ssi_dtu/test_app/tmp/$USER/sing_cache
+export SINGULARITY_DOCKER_USERNAME=user
+export SINGULARITY_DOCKER_PASSWORD=password

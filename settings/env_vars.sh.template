@@ -1,27 +1,25 @@
-export BIFROST_JOB_ACCOUNT="account";
-export BIFROST_RESNODES="nodes";
-export BASE_DIR="/opts/bifrost"
-export DATA_DIR="/data"
-export BIFROST_RAW_DATA_MNT="$DATA_DIR/seqdata_test";
-export BIFROST_OUTPUT_DIR="$DATA_DIR/output_test";
+export BASE_DIR="/home/projects/fvst_ssi_dtu/test_app"
+export DATA_DIR="/home/projects/fvst_ssi_dtu/test_data"
+export BIFROST_RAW_DATA_MNT="$DATA_DIR/seqdata";
+export BIFROST_OUTPUT_DIR="$DATA_DIR/output";
 export BIFROST_SCRIPT_DIR="$BASE_DIR/scripts"
 export BIFROST_LOG_DIR="$BASE_DIR/logs"
 export BIFROST_SETTINGS_DIR="$BASE_DIR/settings"
 export BIFROST_CONFIG_DIR="$BIFROST_SCRIPT_DIR";
 export BIFROST_IMAGE_DIR="$BIFROST_SCRIPT_DIR/singularity";
-export BIFROST_DB_KEY="mongodb://bifrost_user:password@mongodb.server:27017/bifrost_db?authSource=admin";
-export BIFROST_RUN_LAUNCHER="bifrost_run_launcher__v2_2_4__"
-export BIFROST_COMPONENT_LIST=("bifrost_min_read_check__v2_2_8" "bifrost_whats_my_species__v2_2_11__171019" "bifrost_assemblatron__v2_2_16" "bifrost_ssi_stamper__v2_2_11" "bifrost_cge_mlst__v2_2_6__210314" "bifrost_seqsero__v0_0_2" "bifrost_enterobase__v1_0_0__" "bifrost-cge_resfinder__v2_0_5")
 
 export SINGULARITY_VERSION="singularity/3.6.4"
 export ANACONDA_VERSION="anaconda3/4.4.0"
 
+source "$BIFROST_SETTINGS_DIR/mongo_vars.sh"
+source "$BIFROST_SETTINGS_DIR/components.sh"
+
 # slurm
-export BIFROST_JOB_MEM="12gb";
-export BIFROST_JOB_CPUS=4;
-export BIFROST_JOB_TIME="03:00:00";
+source "$BIFROST_SETTINGS_DIR/queue_settings.sh"
 
 # enterobase
-export ENTEROBASE_SERVER=https://enterobase.warwick.ac.uk
-export ENTEROBASE_USERNAME=User
-export ENTEROBASE_PASSWORD=Password
+source "$BIFROST_SETTINGS_DIR/enterobase.sh"
+
+# chewiesnake
+export CHEWIESNAKE_CONFIG_DIR="/home/projects/fvst_ssi_dtu/test_data/cs";
+export CHEWIESNAKE_DRYRUN="False"
