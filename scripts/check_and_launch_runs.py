@@ -88,9 +88,10 @@ def get_institution_year_folders(dirname):
             for year in os.listdir(institution_path):
                 if re.match("20\d\d", year) is not None:
                     year_path = os.path.join(institution_path, year)
-                    for run_folder in os.listdir(year_path):
+                    for list_item in os.listdir(year_path):
                         # If run folders should be filtered, do it here
-                        institution_year_run_folders.append((institution, year, run_folder))
+                        if Path(list_item).is_dir:
+                            institution_year_run_folders.append((institution, year, list_item))
     return institution_year_run_folders # List of [(institution, year, run_folder)]
 
 def main(args: Dict) -> None:
