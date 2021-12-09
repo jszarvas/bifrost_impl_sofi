@@ -9,3 +9,4 @@ logs/*
 *.bak
 *.sh.e*
 *.sh.o*
+__pycache__
