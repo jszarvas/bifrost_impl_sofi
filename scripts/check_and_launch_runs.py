@@ -90,8 +90,7 @@ def get_institution_year_folders(dirname):
                     year_path = os.path.join(institution_path, year)
                     for list_item in os.listdir(year_path):
                         # If run folders should be filtered, do it here
-                        if os.path.isdir(list_item):
-                            institution_year_run_folders.append((institution, year, list_item))
+                        institution_year_run_folders.append((institution, year, list_item))
     return institution_year_run_folders # List of [(institution, year, run_folder)]
 
 def main(args: Dict) -> None:
