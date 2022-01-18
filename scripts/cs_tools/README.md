@@ -41,7 +41,7 @@ Example (running from the same directory as sample_list.tsv):
 /path/to/maintain_sample_list.py sample_list.tsv -s Salmonella_enterica -d /path/to/run_folder
 
 It's important to use the -s option option since this will make a list only with samples of the
-relevant species. maintain_sample_list.py will look up the species in a file named run_metadata.tsv
+relevant species. maintain_sample_list.py will look up the species in a file named sofi_metadata.tsv
 in the seqdata folder, so make sure this file is present.
 
 ## Run chewieSnake

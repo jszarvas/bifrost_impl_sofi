@@ -22,9 +22,9 @@ RUN_PATH=$BIFROST_INSTITUTION/$BIFROST_YEAR/$BIFROST_RUN_NAME
 BIFROST_RUN_DIR=$BIFROST_OUTPUT_DIR/$RUN_PATH
 BIFROST_READS_DIR=$BIFROST_RAW_DATA_MNT/$RUN_PATH
 
-if [[ ! -f "$BIFROST_READS_DIR/run_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/run_metadata.tsv" ]]
+if [[ ! -f "$BIFROST_READS_DIR/sofi_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/sofi_metadata.tsv" ]]
 then
-    echo "No run_metadata[.xlsx|.tsv] found. Skipping run."
+    echo "No sofi_metadata[.xlsx|.tsv] found. Skipping run."
     exit
 fi
 
@@ -38,23 +38,23 @@ ln -s $BIFROST_READS_DIR samples
 
 module load $ANACONDA_VERSION;
 
-if [[ -f "$BIFROST_READS_DIR/run_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/run_metadata.tsv" ]]
+if [[ -f "$BIFROST_READS_DIR/sofi_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/sofi_metadata.tsv" ]]
 then
-    echo "converting run_metadata.xlsx to tsv"
-    $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' $BIFROST_READS_DIR/run_metadata.xlsx > $BIFROST_RUN_DIR/run_metadata.tsv;
+    echo "converting sofi_metadata.xlsx to tsv"
+    $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' $BIFROST_READS_DIR/sofi_metadata.xlsx > $BIFROST_RUN_DIR/sofi_metadata.tsv;
 fi
-if [ -f "$BIFROST_READS_DIR/run_metadata.tsv" ]
+if [ -f "$BIFROST_READS_DIR/sofi_metadata.tsv" ]
 then
-    echo "copying run_metadata.tsv to run_dir"
-    cp $BIFROST_READS_DIR/run_metadata.tsv $BIFROST_RUN_DIR/run_metadata.tsv;
+    echo "copying sofi_metadata.tsv to run_dir"
+    cp $BIFROST_READS_DIR/sofi_metadata.tsv $BIFROST_RUN_DIR/sofi_metadata.tsv;
 fi
 
-if [ -f "$BIFROST_RUN_DIR/run_metadata.tsv" ]
+if [ -f "$BIFROST_RUN_DIR/sofi_metadata.tsv" ]
 then
-    echo "cleaning up species names in run_metadata.tsv"
-    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_RUN_DIR/run_metadata.tsv -out $BIFROST_RUN_DIR/run_metadata.clean.tsv
+    echo "cleaning up species names in sofi_metadata.tsv"
+    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_RUN_DIR/sofi_metadata.tsv -out $BIFROST_RUN_DIR/sofi_metadata.clean.tsv
 else
-    echo "$BIFROST_RUN_DIR/run_metadata.tsv not found! Exiting!"
+    echo "$BIFROST_RUN_DIR/sofi_metadata.tsv not found! Exiting!"
     exit
 fi
 
@@ -82,7 +82,7 @@ $BIFROST_READS_DIR \
         -post $BIFROST_SCRIPT_DIR/launcher_scripts/post.sh \
         -colmap $BIFROST_SETTINGS_DIR/colmap.json \
         -reads $BIFROST_RUN_DIR/samples \
-        -meta $BIFROST_RUN_DIR/run_metadata.clean.tsv \
+        -meta $BIFROST_RUN_DIR/sofi_metadata.clean.tsv \
         -name $BIFROST_RUN_NAME \
         -out $BIFROST_RUN_DIR \
 

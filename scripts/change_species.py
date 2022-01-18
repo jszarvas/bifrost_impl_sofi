@@ -5,7 +5,7 @@ import argparse
 
 def parse_args() -> object:
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
-    parser.add_argument('-meta', '--run_metadata_tsv',
+    parser.add_argument('-meta', '--sofi_metadata_tsv',
                         required=True,
                         help='Meta data to be translated')
     parser.add_argument('-out', '--output',
@@ -111,7 +111,7 @@ def species_convert(args: object) -> None:
     for key in species_translation_dict:
         capital_species_translation_dict[str(key).upper()] = species_translation_dict[key]
 
-    df = pd.read_table(args.run_metadata_tsv)
+    df = pd.read_table(args.sofi_metadata_tsv)
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
     sample_key = "SampleID"
     samples_no_index = df[df[sample_key].isna()].index

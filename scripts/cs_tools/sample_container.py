@@ -56,9 +56,9 @@ class SampleContainer:
         Return a list of (sequence_id, file1, file2) where file1, file2 have full paths.
         """
         output = list()
-        with open(metadata_file, 'r') as run_metadata_tsv:
-            next(run_metadata_tsv)  # Ignore header
-            for line in run_metadata_tsv:
+        with open(metadata_file, 'r') as sofi_metadata_tsv:
+            next(sofi_metadata_tsv)  # Ignore header
+            for line in sofi_metadata_tsv:
                 if line == '\n':  # Ignore blank lines
                     continue
                 sample = line.rstrip().split('\t')
@@ -95,7 +95,7 @@ class SampleContainer:
             print(sample[0], sample[1])
 
     def maintain(self, fastq_dir: Path) -> bool:
-        metadata_file = Path(fastq_dir.joinpath('run_metadata.tsv'))
+        metadata_file = Path(fastq_dir.joinpath('sofi_metadata.tsv'))
         if not metadata_file.exists():
             print(f"Metadata file {metadata_file} does not exist - ignoring folder")
             return False
