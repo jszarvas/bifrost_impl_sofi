@@ -1,3 +1,4 @@
+# Installation
 
 1. Clone https://github.com/ssi-dk/test_app_computerome into a directory.
 

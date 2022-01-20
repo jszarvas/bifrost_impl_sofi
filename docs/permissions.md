@@ -1,4 +1,5 @@
-Plan for permissions
+# Permissions
+## Plan for permissions
 
 Installation root (/home/projects/fvst_ssi_dtu/) is owned by group fvst_ssi_dtu with permissions 770 to restrict access members of that group only.
 
@@ -15,5 +16,5 @@ __test_data__:
 The result should be that fvst_admins have read/write on everything (and execute where appropriate), regardless of owner, while the 
 fvst_ssi_dtu users have read access (and execute on some things).
 
-** Where are permissions set **
+# Where are permissions set?
 umask 002 is set in scripts/cron_run.sh
