@@ -2,7 +2,7 @@
 
 Bifrost implementation scripts for SOFI.
 
-The repos was former named "test_app_computerome".
+This repo was formerly named "test_app_computerome".
 
 ## Bifrost command flow
 
