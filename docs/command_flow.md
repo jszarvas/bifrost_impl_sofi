@@ -1,7 +1,6 @@
-# Bifrost command flow
+# Bifrost command flow (TODO: make this more elaborated)
 
 cron -> cron_run.sh -> start.sh
-
 start.sh (sources env_vars.sh) -> $BIFROST_CONFIG_DIR/check_and_launch_runs.py
 
 ## check_and_launch_runs.py
@@ -11,8 +10,9 @@ checks input folders: $BIFROST_RAW_DATA_MNT/20\d\d/Run_name
 
 compares to output folders $BIFROST_OUTPUT_DIR/20\d\d/Run_name
 
-if input directory does not have a corresponding output directory, launch bifrost:
-qsub -F year, run_name, config_dir $BIFROST_CONFIG_DIR/launch_bifrost.sh
+if input directory does not have a corresponding output directory, launch bifrost like this:
+
+`qsub -F year, run_name, config_dir $BIFROST_CONFIG_DIR/launch_bifrost.sh`
 
 ## launch_bifrost.sh
 - creates run_directory = output directory
@@ -33,7 +33,8 @@ generate_run_script\
 Creates run_script.sh to launch remaining components from Pre, Per and Post scripts in config dir
 
 ### How to call bifrost_run_launcher
-  singularity run \
+```
+singularity run \
     -B $BIFROST_RUN_DIR,$BIFROST_CONFIG_DIR,$BIFROST_READS_DIR \
     --userns \
     $BIFROST_IMAGE_DIR/bifrost_run_launcher__v2_2_3__ \
@@ -45,6 +46,7 @@ Creates run_script.sh to launch remaining components from Pre, Per and Post scri
         -meta $BIFROST_READS_DIR/run_metadata.tsv \
         -name $BIFROST_RUN_NAME \
         -out $BIFROST_RUN_DIR
+```
 
 ## run_script.sh
 Launches components to queue system
