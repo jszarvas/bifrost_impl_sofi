@@ -57,7 +57,7 @@ Launches components to queue system
 
 
 
-## Bifrost component Overview
+## Bifrost component overview
 
 pipeline.smk contains the component specific commands. For simple components, this is the only thing that needs editing.
 
