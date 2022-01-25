@@ -1,4 +1,4 @@
-# Bifrost command flow (TODO: make this more elaborated)
+# Bifrost command flow
 
 cron -> cron_run.sh -> start.sh
 start.sh (sources env_vars.sh) -> $BIFROST_CONFIG_DIR/check_and_launch_runs.py
