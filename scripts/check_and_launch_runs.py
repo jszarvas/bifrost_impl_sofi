@@ -5,8 +5,6 @@ import subprocess
 from typing import Set, List, Dict
 from pathlib import Path
 
-from cs_tools.sample_container import SampleContainer
-
 
 def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution: str, year: str, run_name: str) -> None:
     command: str = f'cd {script_dir};\
