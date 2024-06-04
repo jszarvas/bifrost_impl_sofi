@@ -21,5 +21,5 @@ echo "Downloading $1__$2"
 echo "singularity build --sandbox -F $1__$2 docker://ssidk/$1:$2"
 singularity build --sandbox -F $1__$2 docker://ssidk/$1:$2
 
-echo "singularity run --info $1__$2"
+echo "singularity run $1__$2 --info"
 singularity run $1__$2 --info

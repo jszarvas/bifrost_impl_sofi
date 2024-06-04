@@ -6,11 +6,12 @@
 
 #Load modules in Computerome
 
+set -euo pipefail
 
-BIFROST_INSTITUTION=$1
-BIFROST_YEAR=$2
-BIFROST_RUN_NAME=$3
-BIFROST_SETTINGS_DIR=$4
+export BIFROST_INSTITUTION=${1:-}
+BIFROST_YEAR=${2:-}
+BIFROST_RUN_NAME=${3:-}
+BIFROST_SETTINGS_DIR=${4:-}
 echo "Config dir:"
 echo $BIFROST_SETTINGS_DIR
 source $BIFROST_SETTINGS_DIR/env_vars.sh
@@ -36,7 +37,9 @@ cd $BIFROST_RUN_DIR
 ln -s $BIFROST_READS_DIR samples
 
 
-module load $ANACONDA_VERSION;
+module load $CONDA_VERSION;
+source $BIFROST_CONDA_PATH/conda_init.sh
+$CONDACMD activate bifrost_base
 
 if [[ -f "$BIFROST_READS_DIR/sofi_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/sofi_metadata.tsv" ]]
 then
@@ -58,7 +61,9 @@ else
     exit
 fi
 
-module unload $ANACONDA_VERSION;
+$CONDACMD deactivate
+
+module unload $CONDA_VERSION;
 
 #cd /home/projects/ssi_disease_surveillance/data/test_script/bifrost_test_data
 # Cleanup from last attempt
@@ -84,6 +89,6 @@ $BIFROST_READS_DIR \
         -reads $BIFROST_RUN_DIR/samples \
         -meta $BIFROST_RUN_DIR/sofi_metadata.clean.tsv \
         -name $BIFROST_RUN_NAME \
-        -out $BIFROST_RUN_DIR \
+        -out $BIFROST_RUN_DIR ;
 
 bash run_script.sh

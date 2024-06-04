@@ -5,11 +5,16 @@
 #PBS -W x=advres:fvst_ssi_dtu_wiki_fodevarestyrelsen.16
 #PBS -v BASE_DIR
 
+if [ "x$BASE_DIR" == "x" ]; then
+    echo "\$BASE_DIR not set. Exiting"
+    exit
+fi
+
 cd $BASE_DIR/scripts/singularity
 module load tools
 module load singularity/3.6.4
 source $BASE_DIR/settings/singularity_settings.sh
 source $BASE_DIR/settings/env_vars.sh
 
-echo "singularity run --info $1__$2"
+echo "singularity run $1__$2 --info"
 singularity run $1__$2 --info

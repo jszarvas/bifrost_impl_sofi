@@ -42,7 +42,7 @@ cd $BIFROST_RUN_DIR
 ln -s $BIFROST_READS_DIR samples
 
 
-module load $ANACONDA_VERSION;
+module load $CONDA_VERSION;
 
 if [[ -f "$BIFROST_READS_DIR/sofi_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/sofi_metadata.tsv" ]]
 then
@@ -64,7 +64,7 @@ else
     exit
 fi
 
-module unload $ANACONDA_VERSION;
+module unload $CONDA_VERSION;
 
 singularity run \
     -B $BIFROST_RUN_DIR,\
