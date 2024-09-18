@@ -72,14 +72,15 @@ submit_sample_component() {
 
   local COMPONENT_VERSION=v${COMPONENT##*_v}
   local COMPONENT_NAME=${COMPONENT%_v*}
+  local COMPONENT_CLEAN_NAME=${COMPONENT_NAME#bifrost_}
+  local STAGE=${BIFROST_STAGE:+${BIFROST_STAGE}_}
+
+  local CONDA_ENV_NAME=bifrost_${STAGE}${COMPONENT_CLEAN_NAME}_${COMPONENT_VERSION}
 
   local command=$(echo 'module load tools;' \
                 'module load '$CONDA_VERSION';' \
-                'hostname;' \
                 'eval "$(conda shell.bash hook)";' \
-                'conda env list;' \
-                'conda info;' \
-                'conda activate "'$COMPONENT'";' \
+                'conda activate "'$CONDA_ENV_NAME'";' \
                 'python -m "'$COMPONENT_NAME'" --sample_name "'$sample_name'" ;')
   echo $command > command.txt
   SAMPLE_PIPELINE_ID=$(\
