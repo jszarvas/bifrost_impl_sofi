@@ -15,8 +15,8 @@ def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution
                                                  shell=True,
                                                  env=os.environ)
     process_out, process_err = process.communicate()
-    sys.stdout.write(str(process_out))
-    sys.stderr.write(str(process_err))
+    #sys.stdout.write(str(process_out))
+    #sys.stderr.write(str(process_err))
 
 def get_year_folders(dirname):
     year_run_folders = []
