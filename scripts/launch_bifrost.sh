@@ -63,25 +63,39 @@ fi
 
 $CONDACMD deactivate
 
-module unload $CONDA_VERSION;
 
-#cd /home/projects/ssi_disease_surveillance/data/test_script/bifrost_test_data
-# Cleanup from last attempt
-# rm run_script.sh
-# rm -dr S1
-# rm run.yaml
-# rm samples.yaml
+# ## Start run_launcher singularity
+# singularity run \
+#     -B $BIFROST_RUN_DIR,\
+# $BIFROST_SCRIPT_DIR:$BIFROST_SCRIPT_DIR:ro,\
+# $BIFROST_SETTINGS_DIR:$BIFROST_SETTINGS_DIR:ro,\
+# $BIFROST_LOG_DIR,\
+# $BIFROST_READS_DIR \
+#     --userns \
+#     $BIFROST_IMAGE_DIR/$BIFROST_RUN_LAUNCHER \
+#         -pre $BIFROST_SCRIPT_DIR/launcher_scripts/pre.sh \
+#         -per $BIFROST_SCRIPT_DIR/launcher_scripts/per.sh \
+#         -post $BIFROST_SCRIPT_DIR/launcher_scripts/post.sh \
+#         -colmap $BIFROST_SETTINGS_DIR/colmap.json \
+#         -reads $BIFROST_RUN_DIR/samples \
+#         -meta $BIFROST_RUN_DIR/sofi_metadata.clean.tsv \
+#         -name $BIFROST_RUN_NAME \
+#         -out $BIFROST_RUN_DIR ;
+
+## Start run_launcher conda
 
 
+COMPONENT=$BIFROST_RUN_LAUNCHER
+COMPONENT_VERSION=v${COMPONENT##*_v}
+COMPONENT_NAME=${COMPONENT%_v*}
+COMPONENT_CLEAN_NAME=${COMPONENT_NAME#bifrost_}
+STAGE=${BIFROST_STAGE:+${BIFROST_STAGE}_}
 
-singularity run \
-    -B $BIFROST_RUN_DIR,\
-$BIFROST_SCRIPT_DIR:$BIFROST_SCRIPT_DIR:ro,\
-$BIFROST_SETTINGS_DIR:$BIFROST_SETTINGS_DIR:ro,\
-$BIFROST_LOG_DIR,\
-$BIFROST_READS_DIR \
-    --userns \
-    $BIFROST_IMAGE_DIR/$BIFROST_RUN_LAUNCHER \
+$CONDACMD activate bifrost_$STAGE${COMPONENT_CLEAN_NAME}_$COMPONENT_VERSION
+
+
+echo python -m $COMPONENT_NAME \
+        -rerun \
         -pre $BIFROST_SCRIPT_DIR/launcher_scripts/pre.sh \
         -per $BIFROST_SCRIPT_DIR/launcher_scripts/per.sh \
         -post $BIFROST_SCRIPT_DIR/launcher_scripts/post.sh \
@@ -90,5 +104,9 @@ $BIFROST_READS_DIR \
         -meta $BIFROST_RUN_DIR/sofi_metadata.clean.tsv \
         -name $BIFROST_RUN_NAME \
         -out $BIFROST_RUN_DIR ;
+
+$CONDACMD deactivate
+
+module unload $CONDA_VERSION;
 
 bash run_script.sh
