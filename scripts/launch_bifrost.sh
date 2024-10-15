@@ -94,7 +94,7 @@ STAGE=${BIFROST_STAGE:+${BIFROST_STAGE}_}
 $CONDACMD activate bifrost_$STAGE${COMPONENT_CLEAN_NAME}_$COMPONENT_VERSION
 
 
-echo python -m $COMPONENT_NAME \
+python -m $COMPONENT_NAME \
         -rerun \
         -pre $BIFROST_SCRIPT_DIR/launcher_scripts/pre.sh \
         -per $BIFROST_SCRIPT_DIR/launcher_scripts/per.sh \
