@@ -7,21 +7,23 @@
 module load tools
 module load mongodb/4.4.1
 
-
+collection="samples"
+unique_field="categories.sample_info.summary.sofi_sequence_id"
 
 mongo $BIFROST_DB_KEY <<EOF
-const latestDocs = db.samples.aggregate([
+const latestDocs = db.$collection.aggregate([
   {
-    $sort: { "categories.sample_info.summary.sofi_sequence_id": 1, createdAt: -1 } // Sort by unique field, then by timestamp descending
+    \$sort: { "$unique_field": 1, createdAt: -1 } 
   },
   {
-    $group: {
-      _id: "$categories.sample_info.summary.sofi_sequence_id",
-      latestDocId: { $first: "$_id" } // Keep the ID of the latest document for each unique field value
+    \$group: {
+      _id: "\$$unique_field",
+      latestDocId: { \$first: "\$_id" } // Keep the ID of the latest document for each unique field value
     }
   }
 ])
 const latestDocIds = [];
 latestDocs.forEach(doc => {latestDocIds.push(doc.latestDocId)});
-db.samples.find({ _id: { $nin: latestDocIds } });
+db.$collection.find({ _id: { \$nin: latestDocIds } });
+print(latestDocIds)
 EOF
