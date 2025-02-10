@@ -21,6 +21,8 @@ python3 utils/clean_up_runs.py 2>&1 | tee -a $LOG
 echo "Re-run samples" | tee -a $LOG
 python3 utils/rerun_samples.py 2>&1 | tee -a $LOG
 echo "Processing samples" | tee -a $LOG
-bash $BIFROST_SCRIPT_DIR/start.sh 2>&1 | tee -a $LOG
+source ../settings/env_vars.sh
+python3 $BIFROST_SCRIPT_DIR/check_and_launch_runs.py;
+#bash $BIFROST_SCRIPT_DIR/start.sh 2>&1 | tee -a $LOG
 #python3 utils/fix_output_permissions.py 2>&1 | tee -a $LOG
 

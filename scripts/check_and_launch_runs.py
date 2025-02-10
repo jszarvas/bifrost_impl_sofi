@@ -4,30 +4,65 @@ import re
 import subprocess
 from typing import Set, List, Dict
 from pathlib import Path
+import logging
+from datetime import datetime
 
+
+def setup_logging(log_dir: str, script_name: str):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    script_basename = os.path.splitext(os.path.basename(script_name))[0]
+
+    # Ensure log directory exists
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Construct log file path correctly
+    log_file = os.path.join(log_dir, f"bifrost_script_{script_basename}.log")
+
+    # Get root logger
+    logger = logging.getLogger()
+
+    # Remove all handlers to reset logging to a new file
+    while logger.hasHandlers():
+        logger.removeHandler(logger.handlers[0])
+
+    # Set up logging with a new file for each run
+    logging.basicConfig(
+        filename=log_file,
+        filemode="a",  # Append mode
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        level=logging.INFO
+    )
+
+    # Add console logging
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(console_handler)
+
+    logging.info(f"Logging started for {log_file}")
 
 def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution: str, year: str, run_name: str) -> None:
-    command: str = f'cd {script_dir};\
-    /usr/local/bin/qsub -W umask=002 -W group_list=fvst_admins -N "bf_launch_{run_name}" -e {log_dir} -o {log_dir} -F "{institution} {year} {run_name} {settings_dir}" {script_dir}/launch_bifrost.sh '
-    process: subprocess.Popen = subprocess.Popen(command,
-                                                 stdout=subprocess.PIPE,
-                                                 stderr=subprocess.STDOUT,
-                                                 shell=True,
-                                                 env=os.environ)
-    process_out, process_err = process.communicate()
-    #sys.stdout.write(str(process_out))
-    #sys.stderr.write(str(process_err))
+    
+    job_name = f"launch_bifrost_sh_{run_name}"
+    script_name = "launch_bifrost.sh"
 
-def get_year_folders(dirname):
-    year_run_folders = []
-    for year in os.listdir(dirname):
-        # Will stop working on 2100, sorry.
-        if re.match("20\d\d", year) is not None:
-            year_path = os.path.join(dirname, year)
-            for run_folder in os.listdir(year_path):
-                # If run folders should be filtered, do it here
-                year_run_folders.append((year, run_folder))
-    return year_run_folders # List of [(year, run_folder)]
+    command = f'cd {script_dir};\
+    /usr/local/bin/qsub -W umask=002 -W group_list=fvst_admins -N "{job_name}" -e {log_dir} -o {log_dir} \
+    -F "{institution} {year} {run_name} {settings_dir}" {script_dir}/{script_name}'
+
+    #print(f"the sequencing command is {command}")
+    logging.info(f"Submitting sequencing job: {command}")
+
+    process = subprocess.Popen(command,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,
+                               shell=True,
+                               env=os.environ)
+    process_out, process_err = process.communicate()
+
+    if process.returncode == 0:
+        logging.info(f"Sequencing job {job_name} submitted successfully.")
+    else:
+        logging.error(f"Error submitting sequencing job {job_name}: {process_err.decode().strip()}")
 
 def get_institution_year_folders(dirname):
     institution_year_run_folders = []
@@ -35,7 +70,7 @@ def get_institution_year_folders(dirname):
         institution_path = os.path.join(dirname, institution)
         if os.path.isdir(institution_path):
             for year in os.listdir(institution_path):
-                if re.match("20\d\d", year) is not None:
+                if re.match(r"20\d\d", year) is not None:
                     year_path = os.path.join(institution_path, year)
                     for list_item in os.listdir(year_path):
                         # If run folders should be filtered, do it here
@@ -45,30 +80,34 @@ def get_institution_year_folders(dirname):
 def main(args: Dict) -> None:
     seqs: Set = set(get_institution_year_folders(args["raw_data_dir"]))
     output: Set = set(get_institution_year_folders(args["output_dir"]))
-    # Code here checks if output folder has "complete.txt", but this
-    # would trigger runs to start again if they haven't finished. So we 
-    # just check if they exist.
-
-    # for run_name in os.listdir(args["output_dir"]):
-    #     run_dir: Text = os.path.join(args["output_dir"], run_name)
-    #     if os.path.isfile(os.path.join(run_dir, "complete.txt")):
-    #         output.add(run_name)
-
-    # Bifrost
-    print()
-    print("Start Bifrost pipeline")
-    print("Raw data folders:")
-    for institution, year, run in seqs:
-        print(f"{institution}\t{year}\t{run}")
-    print("Existing Bifrost output folders:")
-    for institution, year, run in output:
-        print(f"{institution}\t{year}\t{run}")
     to_run: List = list(seqs - output)
-    print()
-    print("Running Bifrost with these folders:")
+    # Bifrost
+
+    #logging.info("\n===== Starting Bifrost Sequencing pipeline =====")
+    #logging.info("Raw sequencing data folders:")
+
+    for institution, year, run in seqs:
+        #logging.info(f"{institution}\t{year}\t{run}")
+        print(f"{institution}\t{year}\t{run}")
+    
+    #print("Existing Bifrost output folders:")
+    logging.info("Existing Bifrost output folders:")
+    for institution, year, run in output:
+        logging.info(f"{institution}\t{year}\t{run}")#print(f"{institution}\t{year}\t{run}")
+    
+    logging.info("Running Bifrost with these folders:")#print("Running Bifrost with these folders:")
     for institution, year, run_name in to_run:
-        print(f"{institution}\t{year}\t{run_name}")
-        launch_bifrost(args["script_dir"], args["log_dir"], args["settings_dir"], institution, year, run_name)
+        tmp_folder = os.path.join(args["output_dir"], institution, year, run_name)
+        os.makedirs(tmp_folder, exist_ok=True)  # Ensure directory exists
+        setup_logging(tmp_folder, sys.argv[0])
+        logging.info("\n===== Starting Bifrost Sequencing pipeline =====")
+
+        logging.info("Running Bifrost with these folders:")
+        logging.info(f"{institution}\t{year}\t{run_name}")
+        
+        launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name)
+
+        #launch_bifrost(args["script_dir"], args["log_dir"], args["settings_dir"], institution, year, run_name)
 
 
 if __name__ == '__main__':
@@ -83,3 +122,7 @@ if __name__ == '__main__':
         "log_dir": os.environ["BIFROST_LOG_DIR"],
     }
     main(args)
+    print(f"what is argu {sys.argv[0]}")
+    print(os.environ["BIFROST_OUTPUT_DIR"])
+    
+    setup_logging(os.environ["BIFROST_OUTPUT_DIR"],sys.argv[0])

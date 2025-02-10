@@ -18,7 +18,7 @@ def get_institution_year_folders_to_remove(dirname: Path):
         institution_path = os.path.join(dirname, institution)
         if os.path.isdir(institution_path):
             for year in os.listdir(institution_path):
-                if re.match("20\d\d", year) is not None:
+                if re.match(r"20\d\d", year) is not None:
                     year_path = os.path.join(institution_path, year)
                     for run_folder in os.listdir(year_path):
                         if marked_for_cleanup(os.path.join(year_path, run_folder)):
