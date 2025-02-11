@@ -20,10 +20,10 @@ module load tools
 module load $SINGULARITY_VERSION
 
 RUN_PATH=$BIFROST_INSTITUTION/$BIFROST_YEAR/$BIFROST_RUN_NAME
-BIFROST_RUN_DIR=$BIFROST_OUTPUT_DIR/$RUN_PATH
-BIFROST_READS_DIR=$BIFROST_RAW_DATA_MNT/$RUN_PATH
+BIFROST_ASM_RUN_DIR=$BIFROST_ASM_OUTPUT_DIR/$RUN_PATH
+BIFROST_ASM_DIR=$BIFROST_ASM_DATA_MNT/$RUN_PATH
 
-if [[ ! -f "$BIFROST_READS_DIR/sofi_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/sofi_metadata.tsv" ]]
+if [[ ! -f "$BIFROST_ASM_DIR/sofi_metadata.xlsx" && ! -f "$BIFROST_ASM_DIR/sofi_metadata.tsv" ]]
 then
     echo "No sofi_metadata[.xlsx|.tsv] found. Skipping run."
     exit
@@ -32,30 +32,30 @@ fi
 #Set umask to allow writes by group (should be fvst_admins) and deny writes by all (fvst_ssi_dtu)
 umask 0002
 
-[ -d $BIFROST_RUN_DIR ] || mkdir -p $BIFROST_RUN_DIR
-cd $BIFROST_RUN_DIR
-ln -s $BIFROST_READS_DIR samples
+[ -d $BIFROST_ASM_RUN_DIR ] || mkdir -p $BIFROST_ASM_RUN_DIR
+cd $BIFROST_ASM_RUN_DIR
+ln -s $BIFROST_ASM_DIR samples
 
 
 module load $CONDA_VERSION;
 source $BIFROST_CONDA_PATH/conda_init.sh
 $CONDACMD activate bifrost_base
 
-if [[ -f "$BIFROST_READS_DIR/sofi_metadata.xlsx" && ! -f "$BIFROST_READS_DIR/sofi_metadata.tsv" ]]
+if [[ -f "$BIFROST_ASM_DIR/sofi_metadata.xlsx" && ! -f "$BIFROST_ASM_DIR/sofi_metadata.tsv" ]]
 then
     echo "converting sofi_metadata.xlsx to tsv"
-    $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' $BIFROST_READS_DIR/sofi_metadata.xlsx > $BIFROST_RUN_DIR/sofi_metadata.tsv;
+    $BIFROST_SCRIPT_DIR/xlsx2csv/xlsx2csv.py -d 'tab' -f '%d-%m-%y' $BIFROST_ASM_DIR/sofi_metadata.xlsx > $BIFROST_ASM_RUN_DIR/sofi_metadata.tsv;
 fi
-if [ -f "$BIFROST_READS_DIR/sofi_metadata.tsv" ]
+if [ -f "$BIFROST_ASM_DIR/sofi_metadata.tsv" ]
 then
     echo "copying sofi_metadata.tsv to run_dir"
-    cp $BIFROST_READS_DIR/sofi_metadata.tsv $BIFROST_RUN_DIR/sofi_metadata.tsv;
+    cp $BIFROST_ASM_DIR/sofi_metadata.tsv $BIFROST_ASM_DIR/sofi_metadata.tsv;
 fi
 
-if [ -f "$BIFROST_RUN_DIR/sofi_metadata.tsv" ]
+if [ -f "$BIFROST_ASM_DIR/sofi_metadata.tsv" ]
 then
     echo "cleaning up species names in sofi_metadata.tsv"
-    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_RUN_DIR/sofi_metadata.tsv -out $BIFROST_RUN_DIR/sofi_metadata.clean.tsv
+    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_ASM_DIR/sofi_metadata.tsv -out $BIFROST_ASM_RUN_DIR/sofi_metadata.clean.tsv
 else
     echo "$BIFROST_RUN_DIR/sofi_metadata.tsv not found! Exiting!"
     exit
@@ -80,25 +80,13 @@ python -m $COMPONENT_NAME \
         -per $BIFROST_SCRIPT_DIR/launcher_scripts/per.sh \
         -post $BIFROST_SCRIPT_DIR/launcher_scripts/post.sh \
         -colmap $BIFROST_SETTINGS_DIR/colmap.json \
-        -reads $BIFROST_RUN_DIR/samples \
-        -meta $BIFROST_RUN_DIR/sofi_metadata.clean.tsv \
+        -reads $BIFROST_ASM_RUN_DIR/samples \
+        -meta $BIFROST_ASM_RUN_DIR/sofi_metadata.clean.tsv \
         -name $BIFROST_RUN_NAME \
-        -out $BIFROST_RUN_DIR;
-
-echo "python -m $COMPONENT_NAME \
-        -rerun \
-        -pre $BIFROST_SCRIPT_DIR/launcher_scripts/pre.sh \
-        -per $BIFROST_SCRIPT_DIR/launcher_scripts/per.sh \
-        -post $BIFROST_SCRIPT_DIR/launcher_scripts/post.sh \
-        -colmap $BIFROST_SETTINGS_DIR/colmap.json \
-        -reads $BIFROST_RUN_DIR/samples \
-        -meta $BIFROST_RUN_DIR/sofi_metadata.clean.tsv \
-        -name $BIFROST_RUN_NAME \
-        -out $BIFROST_RUN_DIR;
-"
+        -out $BIFROST_ASM_RUN_DIR;
 
 $CONDACMD deactivate
 
 module unload $CONDA_VERSION;
 
-bash run_script.sh
+#bash run_script.sh

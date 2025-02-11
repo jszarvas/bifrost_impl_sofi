@@ -40,10 +40,10 @@ def setup_logging(log_dir: str, script_name: str):
 
     logging.info(f"Logging started for {log_file}")
 
-def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution: str, year: str, run_name: str) -> None:
+def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution: str, year: str, run_name: str, script_name) -> None:
     
     job_name = f"launch_bifrost_sh_{run_name}"
-    script_name = "launch_bifrost.sh"
+    #script_name = "launch_bifrost.sh"
 
     command = f'cd {script_dir};\
     /usr/local/bin/qsub -W umask=002 -W group_list=fvst_admins -N "{job_name}" -e {log_dir} -o {log_dir} \
@@ -77,7 +77,7 @@ def get_institution_year_folders(dirname):
                         institution_year_run_folders.append((institution, year, list_item))
     return institution_year_run_folders # List of [(institution, year, run_folder)]
 
-def main(args: Dict) -> None:
+def main_seq(args: Dict) -> None:
     seqs: Set = set(get_institution_year_folders(args["raw_data_dir"]))
     output: Set = set(get_institution_year_folders(args["output_dir"]))
     to_run: List = list(seqs - output)
@@ -104,11 +104,34 @@ def main(args: Dict) -> None:
 
         logging.info("Running Bifrost with these folders:")
         logging.info(f"{institution}\t{year}\t{run_name}")
-        
-        launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name)
+     
+        script_name = "launch_bifrost.sh"
+   
+        launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
 
-        #launch_bifrost(args["script_dir"], args["log_dir"], args["settings_dir"], institution, year, run_name)
+def main_asm(args: Dict) -> None:
+    asm: Set = set(get_institution_year_folders(args["raw_data_dir"]))
+    output: Set = set(get_institution_year_folders(args["output_dir"]))
+    to_run: List = list(asm - output)
+    # Bifrost
 
+    logging.info("Existing Bifrost output folders:")
+    for institution, year, run in output:
+        logging.info(f"{institution}\t{year}\t{run}")
+
+    logging.info("Running Bifrost with these folders:")
+    for institution, year, run_name in to_run:
+        tmp_folder = os.path.join(args["output_dir"], institution, year, run_name)
+        os.makedirs(tmp_folder, exist_ok=True)  # Ensure directory exists
+        setup_logging(tmp_folder, sys.argv[0])
+        logging.info("\n===== Starting Bifrost Assembly pipeline =====")
+
+        logging.info("Running Bifrost with these folders:")
+        logging.info(f"{institution}\t{year}\t{run_name}")
+
+        script_name = "launch_bifrost_asm.sh"
+
+        launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
 
 if __name__ == '__main__':
 
@@ -121,8 +144,17 @@ if __name__ == '__main__':
         "script_dir": os.environ["BIFROST_SCRIPT_DIR"],
         "log_dir": os.environ["BIFROST_LOG_DIR"],
     }
-    main(args)
+    main_seq(args)
     print(f"what is argu {sys.argv[0]}")
     print(os.environ["BIFROST_OUTPUT_DIR"])
-    
+   
     setup_logging(os.environ["BIFROST_OUTPUT_DIR"],sys.argv[0])
+    
+    args_asm: Dict = {
+        "raw_data_dir": os.environ["BIFROST_ASM_DATA_MNT"],
+        "output_dir": os.environ["BIFROST_ASM_OUTPUT_DIR"],
+        "config_dir": os.environ["BIFROST_CONFIG_DIR"],
+        "settings_dir": os.environ["BIFROST_SETTINGS_DIR"],
+        "script_dir": os.environ["BIFROST_SCRIPT_DIR"],
+        "log_dir": os.environ["BIFROST_LOG_DIR"],
+    }
