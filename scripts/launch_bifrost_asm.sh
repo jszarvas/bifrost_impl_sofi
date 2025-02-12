@@ -49,15 +49,15 @@ fi
 if [ -f "$BIFROST_ASM_DIR/sofi_metadata.tsv" ]
 then
     echo "copying sofi_metadata.tsv to run_dir"
-    cp $BIFROST_ASM_DIR/sofi_metadata.tsv $BIFROST_ASM_DIR/sofi_metadata.tsv;
+    cp $BIFROST_ASM_DIR/sofi_metadata.tsv $BIFROST_ASM_RUN_DIR/sofi_metadata.tsv;
 fi
 
-if [ -f "$BIFROST_ASM_DIR/sofi_metadata.tsv" ]
+if [ -f "$BIFROST_ASM_RUN_DIR/sofi_metadata.tsv" ]
 then
     echo "cleaning up species names in sofi_metadata.tsv"
-    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_ASM_DIR/sofi_metadata.tsv -out $BIFROST_ASM_RUN_DIR/sofi_metadata.clean.tsv
+    python3 $BIFROST_SCRIPT_DIR/change_species.py -meta $BIFROST_ASM_RUN_DIR/sofi_metadata.tsv -out $BIFROST_ASM_RUN_DIR/sofi_metadata.clean.tsv
 else
-    echo "$BIFROST_RUN_DIR/sofi_metadata.tsv not found! Exiting!"
+    echo "$BIFROST_ASM_RUN_DIR/sofi_metadata.tsv not found! Exiting!"
     exit
 fi
 
@@ -77,7 +77,7 @@ $CONDACMD activate bifrost_$STAGE${COMPONENT_CLEAN_NAME}_$COMPONENT_VERSION
 python -m $COMPONENT_NAME \
         -rerun \
         -pre $BIFROST_SCRIPT_DIR/launcher_scripts/pre.sh \
-        -per $BIFROST_SCRIPT_DIR/launcher_scripts/per.sh \
+        -per $BIFROST_SCRIPT_DIR/launcher_scripts/per_asm.sh \
         -post $BIFROST_SCRIPT_DIR/launcher_scripts/post.sh \
         -colmap $BIFROST_SETTINGS_DIR/colmap.json \
         -reads $BIFROST_ASM_RUN_DIR/samples \
@@ -89,4 +89,4 @@ $CONDACMD deactivate
 
 module unload $CONDA_VERSION;
 
-#bash run_script.sh
+bash run_script.sh
