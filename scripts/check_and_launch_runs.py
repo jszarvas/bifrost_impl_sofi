@@ -144,11 +144,12 @@ if __name__ == '__main__':
         "script_dir": os.environ["BIFROST_SCRIPT_DIR"],
         "log_dir": os.environ["BIFROST_LOG_DIR"],
     }
-    #main_seq(args)
-    #print(f"what is argu {sys.argv[0]}")
-    #print(os.environ["BIFROST_OUTPUT_DIR"])
+    
+    main_seq(args)
+    print(f"what is argu {sys.argv[0]}")
+    print(os.environ["BIFROST_OUTPUT_DIR"])
    
-    #setup_logging(os.environ["BIFROST_OUTPUT_DIR"],sys.argv[0])
+    setup_logging(os.environ["BIFROST_OUTPUT_DIR"],sys.argv[0])
     
     args_asm: Dict = {
         "raw_data_dir": os.environ["BIFROST_ASM_DATA_MNT"],
