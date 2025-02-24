@@ -81,14 +81,15 @@ def main_seq(args: Dict) -> None:
     seqs: Set = set(get_institution_year_folders(args["raw_data_dir"]))
     output: Set = set(get_institution_year_folders(args["output_dir"]))
     to_run: List = list(seqs - output)
+    logging.info(f"output is : {output}")
     # Bifrost
 
     #logging.info("\n===== Starting Bifrost Sequencing pipeline =====")
     #logging.info("Raw sequencing data folders:")
 
     for institution, year, run in seqs:
-        #logging.info(f"{institution}\t{year}\t{run}")
-        print(f"{institution}\t{year}\t{run}")
+        logging.info(f"{institution}\t{year}\t{run}")
+        #print(f"{institution}\t{year}\t{run}")
     
     #print("Existing Bifrost output folders:")
     logging.info("Existing Bifrost output folders:")
@@ -109,6 +110,7 @@ def main_seq(args: Dict) -> None:
    
         launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
 
+"""
 def main_asm(args: Dict) -> None:
     asm: Set = set(get_institution_year_folders(args["raw_data_dir"]))
     output: Set = set(get_institution_year_folders(args["output_dir"]))
@@ -132,6 +134,7 @@ def main_asm(args: Dict) -> None:
         script_name = "launch_bifrost_asm.sh"
 
         launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
+"""
 
 if __name__ == '__main__':
 
@@ -146,11 +149,11 @@ if __name__ == '__main__':
     }
     
     main_seq(args)
-    print(f"what is argu {sys.argv[0]}")
     print(os.environ["BIFROST_OUTPUT_DIR"])
    
     setup_logging(os.environ["BIFROST_OUTPUT_DIR"],sys.argv[0])
-    
+
+    """
     args_asm: Dict = {
         "raw_data_dir": os.environ["BIFROST_ASM_DATA_MNT"],
         "output_dir": os.environ["BIFROST_ASM_OUTPUT_DIR"],
@@ -165,4 +168,4 @@ if __name__ == '__main__':
     print(os.environ["BIFROST_ASM_OUTPUT_DIR"])
 
     setup_logging(os.environ["BIFROST_ASM_OUTPUT_DIR"],sys.argv[0])
-    
+    """
