@@ -1,0 +1,21 @@
+component_names:
+- bifrost_assembly_qc
+conda_envs:
+- bifrost_dev_assembly_qc_v2.2.23
+institution:
+- ssi
+- ssi
+resources:
+  memory: 2gb
+  nodes: 1
+  ppn: 4
+  walltime: 01:00:00
+runname:
+- 241108_NB552560_0476_N_WGS_872_AHK2CFAFX7
+- 241108_NB552560_0476_N_WGS_872_AHK2CFAFX7
+sample_names:
+- 241108_NB552560_0476_N_WGS_872_AHK2CFAFX7___2410F73904
+- 241108_NB552560_0476_N_WGS_872_AHK2CFAFX7___2410F73904
+year:
+- '2024'
+- '2024'
