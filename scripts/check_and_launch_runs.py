@@ -6,7 +6,12 @@ from typing import Set, List, Dict
 from pathlib import Path
 import logging
 from datetime import datetime
-
+import json
+import hashlib
+from Bio import SeqIO
+from bson import ObjectId
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
 
 def setup_logging(log_dir: str, script_name: str):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -84,13 +89,12 @@ def main_seq(args: Dict) -> None:
     logging.info(f"output is : {output}")
     # Bifrost
 
-    #logging.info("\n===== Starting Bifrost Sequencing pipeline =====")
-    #logging.info("Raw sequencing data folders:")
+    logging.info("\n===== Starting Bifrost Sequencing pipeline =====")
+    logging.info("Raw sequencing data folders:")
 
     for institution, year, run in seqs:
         logging.info(f"{institution}\t{year}\t{run}")
-        #print(f"{institution}\t{year}\t{run}")
-    
+   
     #print("Existing Bifrost output folders:")
     logging.info("Existing Bifrost output folders:")
     for institution, year, run in output:
@@ -101,43 +105,45 @@ def main_seq(args: Dict) -> None:
         tmp_folder = os.path.join(args["output_dir"], institution, year, run_name)
         os.makedirs(tmp_folder, exist_ok=True)  # Ensure directory exists
         setup_logging(tmp_folder, sys.argv[0])
-        logging.info("\n===== Starting Bifrost Sequencing pipeline =====")
-
-        logging.info("Running Bifrost with these folders:")
+    
         logging.info(f"{institution}\t{year}\t{run_name}")
      
         script_name = "launch_bifrost.sh"
    
         launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
 
-"""
 def main_asm(args: Dict) -> None:
     asm: Set = set(get_institution_year_folders(args["raw_data_dir"]))
     output: Set = set(get_institution_year_folders(args["output_dir"]))
     to_run: List = list(asm - output)
     # Bifrost
 
-    logging.info("Existing Bifrost output folders:")
+    
+    logging.info("\n===== Starting Bifrost Assembly pipeline =====")
+    logging.info("Assembly data folders:")
+
+    for institution, year, run in asm:
+        logging.info(f"{institution}\t{year}\t{run}")
+    #    print(f"{institution}\t{year}\t{run}")
+
+    logging.info("Existing Bifrost assembly output folders:")
     for institution, year, run in output:
         logging.info(f"{institution}\t{year}\t{run}")
 
-    logging.info("Running Bifrost with these folders:")
+    logging.info("Running Bifrost assembly with these folders:")
     for institution, year, run_name in to_run:
         tmp_folder = os.path.join(args["output_dir"], institution, year, run_name)
         os.makedirs(tmp_folder, exist_ok=True)  # Ensure directory exists
         setup_logging(tmp_folder, sys.argv[0])
-        logging.info("\n===== Starting Bifrost Assembly pipeline =====")
 
-        logging.info("Running Bifrost with these folders:")
         logging.info(f"{institution}\t{year}\t{run_name}")
 
         script_name = "launch_bifrost_asm.sh"
 
         launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
-"""
 
 if __name__ == '__main__':
-
+   
     # args: argparse.Namespace = cmdline_args()
     args: Dict = {
         "raw_data_dir": os.environ["BIFROST_RAW_DATA_MNT"],
@@ -148,12 +154,12 @@ if __name__ == '__main__':
         "log_dir": os.environ["BIFROST_LOG_DIR"],
     }
     
+    print(f"running main sequencing pipeline with data dir : {os.environ['BIFROST_RAW_DATA_MNT']} and output dir: {os.environ['BIFROST_OUTPUT_DIR']}")
     main_seq(args)
-    print(os.environ["BIFROST_OUTPUT_DIR"])
+    print(f"Done running main sequencing pipeline")
    
     setup_logging(os.environ["BIFROST_OUTPUT_DIR"],sys.argv[0])
 
-    """
     args_asm: Dict = {
         "raw_data_dir": os.environ["BIFROST_ASM_DATA_MNT"],
         "output_dir": os.environ["BIFROST_ASM_OUTPUT_DIR"],
@@ -162,10 +168,9 @@ if __name__ == '__main__':
         "script_dir": os.environ["BIFROST_SCRIPT_DIR"],
         "log_dir": os.environ["BIFROST_LOG_DIR"],
     }
+
+    print(f"running main assembly pipeline with data dir : {os.environ['BIFROST_ASM_DATA_MNT']} and output dir: {os.environ['BIFROST_ASM_OUTPUT_DIR']}")
+
     main_asm(args_asm)
     
-    print(f"what is argu {sys.argv[0]}")
-    print(os.environ["BIFROST_ASM_OUTPUT_DIR"])
-
     setup_logging(os.environ["BIFROST_ASM_OUTPUT_DIR"],sys.argv[0])
-    """

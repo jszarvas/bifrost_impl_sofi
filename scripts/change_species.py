@@ -120,6 +120,7 @@ def species_convert(args: object) -> None:
 
     df = pd.read_table(args.sofi_metadata_tsv)
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+    print(df)
     sample_key = "SampleID"
     samples_no_index = df[df[sample_key].isna()].index
     df = df.drop(samples_no_index)
