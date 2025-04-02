@@ -45,6 +45,14 @@ def setup_logging(log_dir: str, script_name: str):
 
     logging.info(f"Logging started for {log_file}")
 
+def has_metadata(institution: str, year: str, run_name: str, raw_data_dir: str) -> bool:
+    data_dir = Path(raw_data_dir, institution, year, run_name)
+    for ext in ("xlsx", "tsv"):
+        metadata = data_dir/f"sofi_metadata.{ext}"
+        if metadata.exists():
+            return True
+    return False
+
 def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution: str, year: str, run_name: str, script_name) -> None:
     
     job_name = f"launch_bifrost_sh_{run_name}"
@@ -102,15 +110,15 @@ def main_seq(args: Dict) -> None:
     
     logging.info("Running Bifrost with these folders:")#print("Running Bifrost with these folders:")
     for institution, year, run_name in to_run:
-        tmp_folder = os.path.join(args["output_dir"], institution, year, run_name)
-        os.makedirs(tmp_folder, exist_ok=True)  # Ensure directory exists
-        setup_logging(tmp_folder, sys.argv[0])
-    
-        logging.info(f"{institution}\t{year}\t{run_name}")
-     
-        script_name = "launch_bifrost.sh"
-   
-        launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
+        if has_metadata(institution, year, run_name, args["raw_data_dir"]):
+            tmp_folder = os.path.join(args["output_dir"], institution, year, run_name)
+            os.makedirs(tmp_folder, exist_ok=True)  # Ensure directory exists
+            setup_logging(tmp_folder, sys.argv[0])
+            logging.info(f"{institution}\t{year}\t{run_name}")
+            script_name = "launch_bifrost.sh"
+            launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
+        else:
+            logging.info(f"{institution}\t{year}\t{run_name}\tSkipping (no metadata found)")
 
 def main_asm(args: Dict) -> None:
     asm: Set = set(get_institution_year_folders(args["raw_data_dir"]))
@@ -132,15 +140,15 @@ def main_asm(args: Dict) -> None:
 
     logging.info("Running Bifrost assembly with these folders:")
     for institution, year, run_name in to_run:
-        tmp_folder = os.path.join(args["output_dir"], institution, year, run_name)
-        os.makedirs(tmp_folder, exist_ok=True)  # Ensure directory exists
-        setup_logging(tmp_folder, sys.argv[0])
-
-        logging.info(f"{institution}\t{year}\t{run_name}")
-
-        script_name = "launch_bifrost_asm.sh"
-
-        launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
+        if has_metadata(institution, year, run_name, args["raw_data_dir"]):
+            tmp_folder = os.path.join(args["output_dir"], institution, year, run_name)
+            os.makedirs(tmp_folder, exist_ok=True)  # Ensure directory exists
+            setup_logging(tmp_folder, sys.argv[0])
+            logging.info(f"{institution}\t{year}\t{run_name}")
+            script_name = "launch_bifrost_asm.sh"
+            launch_bifrost(args["script_dir"], tmp_folder, args["settings_dir"], institution, year, run_name,script_name)
+        else:
+            logging.info(f"{institution}\t{year}\t{run_name}\tSkipping (no metadata found)")
 
 if __name__ == '__main__':
    
