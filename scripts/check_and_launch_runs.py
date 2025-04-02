@@ -145,6 +145,9 @@ def main_asm(args: Dict) -> None:
 if __name__ == '__main__':
    
     # args: argparse.Namespace = cmdline_args()
+
+    setup_logging(os.environ["BIFROST_OUTPUT_DIR"],sys.argv[0])
+    
     args: Dict = {
         "raw_data_dir": os.environ["BIFROST_RAW_DATA_MNT"],
         "output_dir": os.environ["BIFROST_OUTPUT_DIR"],
@@ -154,11 +157,12 @@ if __name__ == '__main__':
         "log_dir": os.environ["BIFROST_LOG_DIR"],
     }
     
-    print(f"running main sequencing pipeline with data dir : {os.environ['BIFROST_RAW_DATA_MNT']} and output dir: {os.environ['BIFROST_OUTPUT_DIR']}")
+    #print(f"running main sequencing pipeline with data dir : {os.environ['BIFROST_RAW_DATA_MNT']} and output dir: {os.environ['BIFROST_OUTPUT_DIR']}")
+    logging.info(f"running main sequencing pipeline with data dir : {os.environ['BIFROST_RAW_DATA_MNT']} and output dir: {os.environ['BIFROST_OUTPUT_DIR']}")
     main_seq(args)
     print(f"Done running main sequencing pipeline")
-   
-    setup_logging(os.environ["BIFROST_OUTPUT_DIR"],sys.argv[0])
+
+    setup_logging(os.environ["BIFROST_ASM_OUTPUT_DIR"],sys.argv[0])
 
     args_asm: Dict = {
         "raw_data_dir": os.environ["BIFROST_ASM_DATA_MNT"],
@@ -169,8 +173,8 @@ if __name__ == '__main__':
         "log_dir": os.environ["BIFROST_LOG_DIR"],
     }
 
-    print(f"running main assembly pipeline with data dir : {os.environ['BIFROST_ASM_DATA_MNT']} and output dir: {os.environ['BIFROST_ASM_OUTPUT_DIR']}")
+    #print(f"running main assembly pipeline with data dir : {os.environ['BIFROST_ASM_DATA_MNT']} and output dir: {os.environ['BIFROST_ASM_OUTPUT_DIR']}")
+    logging.info(f"running main assembly pipeline with data dir : {os.environ['BIFROST_ASM_DATA_MNT']} and output dir: {os.environ['BIFROST_ASM_OUTPUT_DIR']}")
 
     main_asm(args_asm)
-    
-    setup_logging(os.environ["BIFROST_ASM_OUTPUT_DIR"],sys.argv[0])
+    print(f"Done running main assembly pipeline")
