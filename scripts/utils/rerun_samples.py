@@ -5,100 +5,25 @@ from shutil import rmtree
 from typing import List, Dict
 from pathlib import Path
 from subprocess import run
+from utils import (
+    complain, die, marked_for_rerun, lock, unlock,
+    mark_for_cleanup, remove_clean_mark
+)
 
-def complain(message):
-    print(message, file=sys.stderr)
+from subprocess import run
 
-def die(message, code=1):
-    print(message, file=sys.stderr)
-    sys.exit(code)
-
-class markedfolder(Path):
-    _flavour = type(Path())._flavour  # type: ignore
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, *args, **kwargs)
-
-    def __init__(self, *args, **kwargs): # args caught by __new__ above
-        self.clean_up_mark = Path(str(self) + ".remove")
-        self.rerun_mark = Path(str(self) + ".rerun")
-        self.lockfile = Path(str(self) + ".lock")
-        super().__init__()
-
-    def cleanup(self):
-        if self.marked_for_cleanup() and self.lock():
-            try:
-                rmtree(self)
-            except PermissionError:
-                complain(f"Failed to remove {self}: Permission denied")
-            except FileNotFoundError:
-                complain(f"FileNotFoundError: {self} doesn't exist")
-            finally:
-                self.remove_clean_mark()
-                self.unlock()
-    def mark_for_cleanup(self):
-        try:
-            self.clean_up_mark.touch()
-        except PermissionError:
-            complain(f"Failed to touch {self.clean_up_mark}: Permission denied")
-    def remove_clean_mark(self):
-        try:
-            self.clean_up_mark.unlink()
-        except Exception:
-            complain("Failed to remove mark: " + str(self.clean_up_mark))
-    def marked_for_cleanup(self):
-        return self.clean_up_mark.exists()
-    def remove_rerun_mark(self):
-        try:
-            self.rerun_mark.unlink()
-        except Exception:
-            complain("Failed to remove mark: " + str(self.rerun_mark))
-
-    def marked_for_rerun(self):
-        return self.rerun_mark.exists()
-
-    def lock(self):
-        try:
-            self.lockfile.touch(exist_ok=False)
-            return True
-        except Exception:
-            return False
-
-    def locked(self):
-        return self.lockfile.exists()
-
-    def unlock(self):
-        try:
-            self.lockfile.unlink()
-        except Exception:
-            complain("Failed to remove lock: " + str(self.lockfile))
-
-    def rerun(self):
-        if self.marked_for_rerun() and self.lock():
-            try:
-                rerun_samples = []
-                with open(self.rerun_mark, 'r') as fh:
-                    for sample_id in fh:
-                        sample_dir = markedfolder(self/sample_id.strip())
-                        sample_dir.mark_for_cleanup()
-                        sample_dir.cleanup()
-                        rerun_samples.append(sample_id)
-                try:
-                    rerun_samples = [x.split('___')[-1].strip() for x in rerun_samples]
-                except IndexError:
-                    pass
-                self.submit_rerun(",".join(rerun_samples))
-                
-                self.remove_rerun_mark()
-            finally:
-                self.unlock()
-
-    def submit_rerun(self, samples: str):
-        try:
-            inst, year, rundir = self.parts[-3:]
-            run(['/usr/local/bin/qsub', '-F', f"{inst} {year} {rundir} {samples}", 'rerun_samples.sh'])
-        except ValueError:
-            print(f"Not implemented: Rerunning {self}")
-        pass
+def submit_rerun(dirname: Path, samples: str):
+    """
+    Submit a rerun job using qsub. Assumes the structure (institution/year/run).
+    """
+    try:
+        parts = dirname.parts[-3:]  # Extract institution, year, and run folder
+        if len(parts) != 3:
+            raise ValueError("Invalid directory structure for rerun submission")
+        inst, year, rundir = parts
+        run(['/usr/local/bin/qsub', '-F', f"{inst} {year} {rundir} {samples}", 'rerun_samples.sh'])
+    except ValueError as e:
+        print(f"Error: {e}")
 
 def search_institution_year_folders(dirname: Path, func):
     institution_year_run_folders = []
@@ -109,20 +34,49 @@ def search_institution_year_folders(dirname: Path, func):
                 if re.match(r"20\d\d", year) is not None:
                     year_path = Path(institution_path, year)
                     for run_folder in os.listdir(year_path):
-                        folder = markedfolder(year_path, run_folder)
+                        folder = Path(year_path, run_folder)
                         if func(folder):
                             institution_year_run_folders.append(folder)
-    return institution_year_run_folders # List of [(institution, year, run_folder)]
+    return institution_year_run_folders
 
+def rerun(directory: Path):
+    if marked_for_rerun(directory) and lock(directory):
+        try:
+            rerun_samples = []
+            with open(str(directory) + ".rerun", 'r') as fh:
+                for sample_id in fh:
+                    sample_dir = Path(directory, sample_id.strip())
+                    mark_for_cleanup(sample_dir)
+                    clean_up_dir(sample_dir)
+                    rerun_samples.append(sample_id.strip())
+            
+            try:
+                rerun_samples = [x.split('___')[-1].strip() for x in rerun_samples]
+            except IndexError:
+                pass
+            
+            submit_rerun(directory, ",".join(rerun_samples))
+        finally:
+            unlock(directory)
 
-def main(args: Dict) -> None:
-    print("Cleaning up.")
-    rerun_dirs: List = search_institution_year_folders(args["output_dir"], lambda d: d.marked_for_rerun())
+def process_reruns(output_dir: Path):
+    print(f"Cleaning up runs in {output_dir}.")
+    rerun_dirs: List = search_institution_year_folders(output_dir, marked_for_rerun)
+    
+    if not rerun_dirs:
+        print(f"No rerun folders found in {output_dir}.")
+
     for rerun_dir in rerun_dirs:
-        rerun_dir.rerun()
+        rerun(rerun_dir)
+
+def main():
+    output_dirs = [
+        Path(os.environ["BIFROST_OUTPUT_DIR"]),
+        Path(os.environ["BIFROST_ASM_OUTPUT_DIR"])
+    ]
+
+    for output_dir in output_dirs:
+        process_reruns(output_dir)
 
 if __name__ == '__main__':
-    args: Dict = {
-        "output_dir": os.environ["BIFROST_OUTPUT_DIR"],
-    }
-    main(args)
+    main()
