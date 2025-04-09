@@ -20,6 +20,13 @@ def species_convert(args: object) -> None:
         "B.pertussis": "Bordetella pertussis",
         "C.coli": "Campylobacter coli",
         "C.jejuni": "Campylobacter jejuni",
+        "C.lari": "Campylobacter lari",
+        "C.upsaliensis": "Campylobacter upsaliensis",
+        "C.fetus": "Campylobacter fetus",
+        "C.helveticus": "Campylobacter helveticus",
+        "C.sputorum": "Campylobacter sputorum",
+        "C.concisus": "Campylobacter concisus",
+        "C.hyointestinalis": "Campylobacter hyointestinalis",
         "C.freundii": "Citrobacter freundii",
         "C.difficile": "Clostridioides difficile",
         "Cronobacter": "Cronobacter sakazakii",
@@ -113,6 +120,7 @@ def species_convert(args: object) -> None:
 
     df = pd.read_table(args.sofi_metadata_tsv)
     df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+    print(df)
     sample_key = "SampleID"
     samples_no_index = df[df[sample_key].isna()].index
     df = df.drop(samples_no_index)

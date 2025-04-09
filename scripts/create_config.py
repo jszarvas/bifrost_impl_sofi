@@ -120,7 +120,6 @@ def main():
     parser.add_argument("--sample_names", type=lambda s: s.split(","), help="Comma-separated list of sample names.")
     parser.add_argument("--run_no", type=lambda s: s.split(","), help="Comma-separated list of run numbers (e.g., 910). Requires --institution and --years.")
 
-
     args = parser.parse_args()
 
     # Ensure single institution value applies to all
@@ -220,7 +219,6 @@ def main():
 
     else:
         parser.error("You must provide --sequence_ID, --isolate_id with --run_name/--run_id, --sample_names or --run_no.")
-
 
     # Ensure correct number of years
     if len(args.years) == 1:

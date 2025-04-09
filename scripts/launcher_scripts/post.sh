@@ -6,7 +6,26 @@
 
 # BIFROST_INSTITUTION inherited from bifrost_launcher.sh
 
+LOG_FILE="bifrost_post_sh.log"
+
+log_message() {
+    local message="$1"
+    local timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+    echo "[$timestamp] $message" | tee -a "$LOG_FILE"
+}
+
+log_message "Starting post-processing script for run $run.name"
+
+# Ensure necessary variables are inherited from the prescript
+log_message "Using BIFROST_JOB_MEM: $BIFROST_JOB_MEM"
+log_message "Using BIFROST_JOB_CPUS: $BIFROST_JOB_CPUS"
+log_message "Using BIFROST_JOB_PARTITION: $BIFROST_JOB_PARTITION"
+log_message "Using BIFROST_SAMPLE_JOB_IDS: $BIFROST_SAMPLE_JOB_IDS"
+log_message "Using BIFROST_INSTITUTION: $BIFROST_INSTITUTION"
+
 recipient_var=BIFROST_RECIPIENTS_$BIFROST_INSTITUTION
+
+log_message "Notification recipients variable: $recipient_var"
 
 last_job_id=$(echo \
 "\
@@ -23,6 +42,6 @@ qsub \
 -m e -M ${!recipient_var}\
 )
 
-
 qrls $BIFROST_SAMPLE_START_ID;
 
+log_message "Released initial job ID: $BIFROST_SAMPLE_START_ID"

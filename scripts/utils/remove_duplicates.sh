@@ -24,6 +24,5 @@ const latestDocs = db.$collection.aggregate([
 ])
 const latestDocIds = [];
 latestDocs.forEach(doc => {latestDocIds.push(doc.latestDocId)});
-db.$collection.find({ _id: { \$nin: latestDocIds } });
-print(latestDocIds)
+db.$collection.deleteMany({ _id: { \$nin: latestDocIds } });
 EOF
