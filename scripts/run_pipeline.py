@@ -54,7 +54,6 @@ def prepare_qsub_script(conda_env: str,component_name: str,sample_name,in_dir: s
     # Check if in_dir exists
     if not os.path.exists(in_dir):
         raise FileNotFoundError(f"Input directory '{in_dir}' does not exist.")
-        print(f"Input directory '{in_dir}' exists.")
     
     # Ensure out_dir exists or create it
     os.makedirs(out_dir, exist_ok=True)
@@ -87,6 +86,7 @@ conda deactivate\n"""
 #PBS -l nodes={qsub_res['nodes']}:ppn={qsub_res['ppn']},mem={qsub_res['memory']},walltime={qsub_res['walltime']}
 #PBS -o {out_dir}/{job_name}.out
 #PBS -e {out_dir}/{job_name}.err\n
+set -euo pipefail\n
 {Bifrost_module_cmd}"""
 
     # create qsub script

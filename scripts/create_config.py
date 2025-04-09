@@ -237,7 +237,7 @@ def main():
         "nodes": args.nodes,
         "ppn": args.ppn,
         "memory": args.memory,
-        "walltime": args.walltime
+        "walltime": str(args.walltime)
     }
 
     # Create YAML config

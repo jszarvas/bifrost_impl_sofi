@@ -9,8 +9,6 @@ runname=`basename $runpath`
 
 echo $runname
 
-source /home/projects/fvst_ssi_dtu/test_app/settings/env_vars.sh
-
 module load tools
 module load mongodb/4.4.1
 
