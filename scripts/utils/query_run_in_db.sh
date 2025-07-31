@@ -9,17 +9,15 @@ runname=`basename $runpath`
 
 echo $runname
 
-source /home/projects/fvst_ssi_dtu/test_app/settings/env_vars.sh
-
 module load tools
 module load mongodb/4.4.1
 
 
 mongo $BIFROST_DB_KEY <<EOF
 db
-db.samples.find({"name":/$runname/})
-db.runs.find({"name":/$runname/})
-db.sample_components.find({"name":/$runname/})
+db.samples.find({"name":/$runname/},{"name":1}).pretty()
+db.runs.find({"name":/$runname/},{"name":1}).pretty()
+db.sample_components.find({"name":/$runname/},{"name":1}).pretty()
 EOF
 
-echo rm -r $runpath
+#echo rm -r $runpath

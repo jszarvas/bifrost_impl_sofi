@@ -20,6 +20,33 @@ def find_runname(base_dir, institution, year, run_id):
 
     raise FileNotFoundError(f"No folder containing '{run_id}' found in {search_path}.")
 
+def find_runname_by_runno(base_dir, institution, year, run_no):
+    """
+    Find all folders matching *_N_WGS_{run_no}_* inside $BIFROST_OUTPUT_DIR/{institution}/{year}/ and return their subfolders as samples.
+    """
+    search_path = os.path.join(base_dir, institution, year)
+    print(f"Searching for run_no '{run_no}' in {search_path}")
+
+    if not os.path.exists(search_path):
+        raise FileNotFoundError(f"Directory {search_path} does not exist.")
+
+    matching_runs = [folder for folder in os.listdir(search_path) if f"N_WGS_{run_no}_" in folder]
+
+    if not matching_runs:
+        raise FileNotFoundError(f"No folder containing 'N_WGS_{run_no}_' found in {search_path}.")
+
+    sample_names = []
+    for run in matching_runs:
+        full_path = os.path.join(search_path, run)
+        if os.path.isdir(full_path):
+            subfolders = [
+                f for f in os.listdir(full_path) 
+                if os.path.isdir(os.path.join(full_path, f)) and f != "samples"
+            ]
+            sample_names.extend([f"{sub}" for sub in subfolders])
+
+    return matching_runs, sample_names
+
 def create_config_file(conda_envs, component_names, samples, resources, institution, years, runname, output_file="config.yaml"):
     prefix = "bifrost_"
     stage = f"{os.environ.get('BIFROST_STAGE', 'dev')}_"
@@ -91,6 +118,7 @@ def main():
     parser.add_argument("--run_id", type=lambda s: s.split(","), help="Comma-separated list of run IDs.")
     parser.add_argument("--run_name", type=lambda s: s.split(","), help="Comma-separated list of run names.")
     parser.add_argument("--sample_names", type=lambda s: s.split(","), help="Comma-separated list of sample names.")
+    parser.add_argument("--run_no", type=lambda s: s.split(","), help="Comma-separated list of run numbers (e.g., 910). Requires --institution and --years.")
 
     args = parser.parse_args()
 
@@ -117,8 +145,20 @@ def main():
     elif args.sample_names:
         num_elements = len(args.sample_names)
 
+    elif args.run_no:
+        num_elements = len(args.run_no)
+
     else:
         parser.error("You must provide --sequence_ID, --isolate_id with --run_name/--run_id, or --sample_names.")
+
+    input_modes = sum([
+        bool(args.sequence_ID),
+        bool(args.isolate_id),
+        bool(args.sample_names),
+        bool(args.run_no)
+    ])
+    if input_modes != 1:
+        parser.error("You must provide exactly one of --sequence_ID, --isolate_id, --sample_names, or --run_no.")
 
     args.years = expand_list(args.years, num_elements)
     args.institution = expand_list(args.institution, num_elements)
@@ -158,10 +198,27 @@ def main():
     elif args.sample_names:
         runnames = [sample.split("___")[0] for sample in args.sample_names]
         sample_names = args.sample_names
+        num_elements = len(sample_names)
+    
+    elif args.run_no:
+        if len(args.run_no) != 1:
+            parser.error("--run_no expects exactly one run number.")
+        if len(args.institution) != 1 or len(args.years) != 1:
+            parser.error("--run_no mode requires exactly one institution and one year.")
+
+        runnames, sample_names = find_runname_by_runno(
+            bifrost_output_dir,
+            args.institution[0],
+            args.years[0],
+            args.run_no[0]
+        )
+        num_elements = len(sample_names)
+        runnames = [runnames[0]] * num_elements
+        args.institution = [args.institution[0]] * num_elements
+        args.years = [args.years[0]] * num_elements
 
     else:
-        parser.error("You must provide --sequence_ID, --isolate_id with --run_name/--run_id, or --sample_names.")
-
+        parser.error("You must provide --sequence_ID, --isolate_id with --run_name/--run_id, --sample_names or --run_no.")
 
     # Ensure correct number of years
     if len(args.years) == 1:
@@ -180,7 +237,7 @@ def main():
         "nodes": args.nodes,
         "ppn": args.ppn,
         "memory": args.memory,
-        "walltime": args.walltime
+        "walltime": str(args.walltime)
     }
 
     # Create YAML config
