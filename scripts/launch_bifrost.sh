@@ -2,7 +2,7 @@
 #PBS -A fvst_ssi_dtu
 #PBS -l nodes=1:ppn=4,mem=12gb,walltime=03:00:00
 #PBS -W group_list=fvst_ssi_dtu
-#PBS -W x=advres:fvst_ssi_dtu_wiki_fodevarestyrelsen.16
+#PBS -W x=advres:fvst_ssi_dtu_wiki_fodevarestyrelsen.11
 
 #Load modules in Computerome
 
@@ -17,7 +17,6 @@ echo "Config dir:"
 source $BIFROST_SETTINGS_DIR/env_vars.sh
 
 module load tools
-module load $SINGULARITY_VERSION
 
 RUN_PATH=$BIFROST_INSTITUTION/$BIFROST_YEAR/$BIFROST_RUN_NAME
 BIFROST_RUN_DIR=$BIFROST_OUTPUT_DIR/$RUN_PATH
