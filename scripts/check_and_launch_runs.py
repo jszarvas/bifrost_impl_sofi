@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import sys
 import re
@@ -6,12 +7,12 @@ from typing import Set, List, Dict
 from pathlib import Path
 import logging
 from datetime import datetime
-import json
-import hashlib
-from Bio import SeqIO
-from bson import ObjectId
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
+#import json
+#import hashlib
+#from Bio import SeqIO
+#from bson import ObjectId
+#from pymongo import MongoClient
+#from pymongo.server_api import ServerApi
 
 def setup_logging(log_dir: str, script_name: str):
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -54,12 +55,12 @@ def has_metadata(institution: str, year: str, run_name: str, raw_data_dir: str) 
     return False
 
 def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution: str, year: str, run_name: str, script_name) -> None:
-    
+    bifrost_qsub_options=os.environ.get("BIFROST_QSUB_OPTIONS")
     job_name = f"launch_bifrost_sh_{run_name}"
     #script_name = "launch_bifrost.sh"
 
     command = f'cd {script_dir};\
-    /usr/local/bin/qsub -W umask=002 -W group_list=fvst_admins -N "{job_name}" -e {log_dir} -o {log_dir} \
+    /usr/local/bin/qsub {bifrost_qsub_options} -N "{job_name}" -e {log_dir} -o {log_dir} \
     -F "{institution} {year} {run_name} {settings_dir}" {script_dir}/{script_name}'
 
     #print(f"the sequencing command is {command}")
