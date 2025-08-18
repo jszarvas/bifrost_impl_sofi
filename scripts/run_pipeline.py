@@ -81,6 +81,8 @@ conda deactivate\n"""
 #PBS -N {job_name}
 #PBS -W x=advres:{os.environ['BIFROST_RESNODES']}
 #PBS -W umask=002
+#PBS -W group_list={os.environ['BIFROST_JOB_ACCOUNT']}
+#PBS -A {os.environ['BIFROST_JOB_ACCOUNT']}
 #PBS -d {out_dir}
 #PBS -v {os.environ['QSUB_KEEP_VARS']}
 #PBS -l nodes={qsub_res['nodes']}:ppn={qsub_res['ppn']},mem={qsub_res['memory']},walltime={qsub_res['walltime']}
