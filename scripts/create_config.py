@@ -3,12 +3,72 @@ import yaml
 import os
 from typing import List, Tuple, Dict, TypedDict
 from datetime import datetime
-
+import pymongo
+from pymongo.errors import PyMongoError
 class ResourcesDict(TypedDict):
     nodes: int
     ppn: int
     memory: str
     walltime: str
+
+### DATABASE CONNECTION
+
+def get_database_names(mongo_client: "pymongo.MongoClient"):
+    """Return a list of database names."""
+    return mongo_client.list_database_names()
+
+def get_collection_names(mongo_client: "pymongo.MongoClient", database: str):
+    """Return a list of collection names in a given database."""
+    db = mongo_client.get_database(database)
+    return db.list_collection_names()
+
+def print_components_by_status(
+    mongo_client,
+    db_name: str,
+    status_value: str,
+    limit: int = 10
+) -> None:
+    """
+    From 'sample_components', print up to `limit` entries whose top-level
+    `status` equals `status_value`. For each, print `component.name` and
+    `sample.name`. Sorted by metadata.updated_at desc if available.
+    """
+
+    db = mongo_client.get_database(db_name)
+    col = db.get_collection("sample_components")
+
+    filt = {"status": status_value} #value to filter status on
+    #projection to identify entries within a collection
+    proj = {
+        "_id": 0,
+        "component.name": 1,
+        "sample.name": 1,
+        "metadata.updated_at": 1,
+    }
+
+    try:
+        """
+        col.find(filt, projection=proj) : query mongoDB documents matching the status filtering - returning only the fields defined in the projection
+
+        sort([("metadata.updated_at", -1)]) : orders results by the metadata updated field to show the newst first
+
+        limit : for printing purpose during the devolpment phase
+        """
+        cursor = col.find(filt, projection=proj).sort([("metadata.updated_at", -1)]).limit(limit)
+    except Exception:
+        # if sort key doesn't exist on the collection, fall back to unsorted
+        cursor = col.find(filt, projection=proj).limit(limit)
+
+    count = 0
+    for count, doc in enumerate(cursor, start=1):
+        comp_name = (doc.get("component") or {}).get("name", "<component.name missing>")
+        samp_name = (doc.get("sample") or {}).get("name", "<sample.name missing>")
+        print(f"[{count}] component.name: {comp_name} - sample.name: {samp_name}")
+              
+    if count == 0:
+        print(f"No documents in 'sample_components' with status == '{status_value}'.")  
+
+### SEARCH HELPER FUNCTIONS
 
 def find_runname(base_dir: str, institution: str, year: str, run_id: str) -> str:
     """
@@ -145,6 +205,11 @@ def main():
     parser.add_argument("--sample_names", type=lambda s: s.split(","), help="Comma-separated list of sample names.")
     parser.add_argument("--run_no", type=lambda s: s.split(","), help="Comma-separated list of run numbers (e.g., 910). Requires --institution and --years.")
 
+    # Handle mongoDB connection
+    parser.add_argument("--status", type=str,choices=["Failure", "Requirements not met", "Running"],help='Pipeline status. If set, a MongoDB key/URI must be resolvable.')
+    parser.add_argument("--mongodb_key", type=lambda s: s.strip() or None, default=None, help="MongoDB key/URI to use directly. If omitted, falls back to --mongodb_envvar.")
+    parser.add_argument("--mongodb_envvar", type=str, default="BIFROST_DB_KEY", help="Name of the environment variable that holds the MongoDB key/URI (default: BIFROST_DB_KEY).")
+                        
     args = parser.parse_args()
 
     print(f"default year {args.years} and insitution {args.institution}")
@@ -158,6 +223,54 @@ def main():
     if not bifrost_output_dir:
         raise EnvironmentError("BIFROST_OUTPUT_DIR is not set.")
 
+    # Resolve connection key to a mongoDB - to estimate the status of the different components
+    mongodb_key = None
+    if args.status is not None:
+    
+        if args.mongodb_key:
+            mongodb_key = args.mongodb_key
+        else:
+            mongodb_key = os.environ.get(args.mongodb_envvar)
+            if not mongodb_key:
+                raise EnvironmentError(f"{args.mongodb_envvar} is not set.")
+
+        print(f"Status is {args.status} with determined mongo db key {mongodb_key}")
+
+        try:
+            client = pymongo.MongoClient(
+                mongodb_key,
+                serverSelectionTimeoutMS=5000,  # 5s timeout for initial handshake
+                connectTimeoutMS=5000,
+                socketTimeoutMS=5000,
+            )
+
+            print(f"Succesfully connected with pymongo.client")
+            
+            db_names = get_database_names(client)
+            print(f"connected db_names {db_names}")
+            
+            if not db_names:
+                raise RuntimeError("Connected to MongoDB, but no databases were returned.")
+
+            database = db_names[0]
+
+            print(f"succesfully connected and extract database name {database}")
+            # Optionally fetch collections for a quick sanity check (can be commented out)
+            try:
+                collection_name = get_collection_names(client, database)
+                print(f"collections names are {collection_name}")
+            except PyMongoError:
+                # Collections may require auth/permissions; not fatal for connectivity
+                pass
+
+            print("database connection done")
+
+            print(f"First 10 entries from 'sample_components' where status == '{args.status}':")
+            print_components_by_status(client, database, args.status, limit=10)
+            
+        except PyMongoError as e:
+            raise RuntimeError(f"Failed to connect to MongoDB when --status Failure: {e}") from e
+            
     # Handling cases based on input
     num_elements = None
     
