@@ -1,17 +1,21 @@
 import argparse
 import yaml
 import os
+import re
 from typing import List, Tuple, Dict, TypedDict
 from datetime import datetime
 import pymongo
 from pymongo.errors import PyMongoError
+
 class ResourcesDict(TypedDict):
     nodes: int
     ppn: int
     memory: str
     walltime: str
 
-### DATABASE CONNECTION
+# ==============================
+# DATABASE CONNECTION HELPERS
+# ==============================
 
 def get_database_names(mongo_client: "pymongo.MongoClient"):
     """Return a list of database names."""
@@ -68,7 +72,86 @@ def print_components_by_status(
     if count == 0:
         print(f"No documents in 'sample_components' with status == '{status_value}'.")  
 
-### SEARCH HELPER FUNCTIONS
+# =================================
+# MONGODB MODE - Depends on status
+# =================================
+
+def normalize_short(name: str) -> str:
+    n = name.strip()
+    n = re.sub(r'^bifrost_', '', n, flags=re.I)     # drop leading bifrost_
+    n = re.sub(r'^[a-z]+_', '', n, flags=re.I)      # drop leading stage like dev_/prod_/qa_
+    n = re.sub(r'_+?[vV]\S+$', '', n)               # drop trailing __v... or _v...
+    return n
+
+def component_name_regexes(short_names: List[str]) -> List[Dict[str, Dict[str, str]]]:
+    """
+    Build case-insensitive regex filters for component.name that try to match
+    typical Bifrost naming variants, e.g.:
+      - "min_read_check"
+      - "bifrost_min_read_check"
+      - "bifrost_dev_min_read_check"
+      - "bifrost_prod_min_read_check_v2.0.0"
+    We match the 'short' name as a whole token, allowing optional bifrost/stage
+    prefix and optional version suffix.
+    """
+    regexes = []
+    for raw in short_names:
+        base = normalize_short(raw)
+        esc = re.escape(base)
+        # ^(?:bifrost_)?(?:[a-z]+_)?sp_cdiff(?:_+[vV][0-9][\w.\-]*)?$
+        pat = rf"^(?:bifrost_)?(?:[a-z]+_)?{esc}(?:_+[vV][0-9][\w.\-]*)?$"
+        regexes.append({"component.name": {"$regex": pat, "$options": "i"}})
+    return regexes
+
+def fetch_samples_by_status_and_components(
+    mongo_client: "pymongo.MongoClient",
+    db_name: str,
+    status_value: str,
+    component_short_names: List[str],
+) -> Tuple[List[str], List[str]]:
+    """
+    Query 'sample_components' for documents where:
+      - status == status_value
+      - component.name matches any of the provided component_short_names
+
+    Returns (runnames_aligned_to_samples, sample_names).
+    """
+    db = mongo_client.get_database(db_name)
+    col = db.get_collection("sample_components")
+
+    comp_or = component_name_regexes(component_short_names)
+    filt = {"status": status_value, "$or": comp_or}
+    proj = {"_id": 0, "component.name": 1, "sample.name": 1, "metadata.updated_at": 1}
+
+    try:
+        cursor = col.find(filt, projection=proj).sort([("metadata.updated_at", DESCENDING)])
+    except Exception:
+        cursor = col.find(filt, projection=proj)
+
+    sample_names: List[str] = []
+    for doc in cursor:
+        sname = (doc.get("sample") or {}).get("name")
+        if not sname:
+            continue
+        sample_names.append(sname)
+
+    if not sample_names:
+        return [], []
+
+    # Derive runnames aligned to sample_names
+    runnames = []
+    for s in sample_names:
+        if "___" in s:
+            run, _ = s.split("___", 1)
+        else:
+            run = s  # fallback: use entire sample name as the run
+        runnames.append(run)
+
+    return runnames, sample_names
+
+# ==================================================
+# SEARCH HELPERS - using the file in our directories
+# ==================================================
 
 def find_runname(base_dir: str, institution: str, year: str, run_id: str) -> str:
     """
@@ -114,6 +197,10 @@ def find_runname_by_runno(base_dir: str, institution: str, year: str, run_no: st
 
     return matching_runs, sample_names
 
+# ==============================
+# CONFIG CREATION
+# ==============================
+
 def create_config_file(
     conda_envs: List[str], 
     component_names: List[str],
@@ -124,6 +211,7 @@ def create_config_file(
     runname: List[str], 
     output_file: str = "config.yaml"
 ) -> None:
+
     if len(conda_envs) != len(component_names):
         raise ValueError("--conda_envs and --component_names must have equal length.")
 
@@ -197,7 +285,7 @@ def main():
     parser.add_argument("--walltime", type=str, default="01:00:00", help="Walltime for qsub (default: 01:00:00).")
     parser.add_argument("--output", default="config.yaml", help="Output file name (default: config.yaml).")
 
-    # Different input methods
+    # Different input methods for the directory search mode
     parser.add_argument("--sequence_ID", type=lambda s: s.split(","), help="Comma-separated list of sequence IDs.")
     parser.add_argument("--isolate_id", type=lambda s: s.split(","), help="Comma-separated list of isolate IDs.")
     parser.add_argument("--run_id", type=lambda s: s.split(","), help="Comma-separated list of run IDs.")
@@ -205,7 +293,7 @@ def main():
     parser.add_argument("--sample_names", type=lambda s: s.split(","), help="Comma-separated list of sample names.")
     parser.add_argument("--run_no", type=lambda s: s.split(","), help="Comma-separated list of run numbers (e.g., 910). Requires --institution and --years.")
 
-    # Handle mongoDB connection
+    # MongoDB search driven approach
     parser.add_argument("--status", type=str,choices=["Failure", "Requirements not met", "Running"],help='Pipeline status. If set, a MongoDB key/URI must be resolvable.')
     parser.add_argument("--mongodb_key", type=lambda s: s.strip() or None, default=None, help="MongoDB key/URI to use directly. If omitted, falls back to --mongodb_envvar.")
     parser.add_argument("--mongodb_envvar", type=str, default="BIFROST_DB_KEY", help="Name of the environment variable that holds the MongoDB key/URI (default: BIFROST_DB_KEY).")
@@ -214,19 +302,20 @@ def main():
 
     print(f"default year {args.years} and insitution {args.institution}")
     
-    
     # Ensure single institution value applies to all
     if len(args.institution) == 1:
         args.institution = args.institution * len(args.years)
 
-    bifrost_output_dir = os.environ.get("BIFROST_OUTPUT_DIR")
-    if not bifrost_output_dir:
-        raise EnvironmentError("BIFROST_OUTPUT_DIR is not set.")
 
-    # Resolve connection key to a mongoDB - to estimate the status of the different components
-    mongodb_key = None
-    if args.status is not None:
-    
+    # determine if we use the search mode through the directories or the mongoDB connection string to identify samples and components to rerun
+    status_mode = args.status is not None
+
+    # ==============================
+    # MONGO-DRIVEN MODE
+    # ==============================
+    if status_mode:
+
+        # Resolve connection key to a mongoDB - to estimate the status of the different components  
         if args.mongodb_key:
             mongodb_key = args.mongodb_key
         else:
@@ -255,6 +344,7 @@ def main():
             database = db_names[0]
 
             print(f"succesfully connected and extract database name {database}")
+
             # Optionally fetch collections for a quick sanity check (can be commented out)
             try:
                 collection_name = get_collection_names(client, database)
@@ -265,12 +355,58 @@ def main():
 
             print("database connection done")
 
-            print(f"First 10 entries from 'sample_components' where status == '{args.status}':")
-            print_components_by_status(client, database, args.status, limit=10)
-            
+            #print(f"First 10 entries from 'sample_components' where status == '{args.status}':")
+            #print_components_by_status(client, database, args.status, limit=10)
+
+            print(f"Selecting from 'sample_components' with status == '{args.status}' and component.name matching any of {args.component_names}")
+
+            runnames, sample_names = fetch_samples_by_status_and_components(client, database, args.status, args.component_names)
+
+            if not sample_names:
+                raise RuntimeError(f"No 'sample_components' found with status '{args.status}' for components {args.component_names}.")
+
+            num_elements = len(sample_names)
+
+            # Expand institution/years to match selected samples
+            if len(args.institution) == 1:
+                args.institution = args.institution * num_elements
+            elif len(args.institution) != num_elements:
+                raise ValueError(f"--institution must have 1 or {num_elements} entries for --status mode.")
+
+            if len(args.years) == 1:
+                args.years = args.years * num_elements
+            elif len(args.years) != num_elements:
+                raise ValueError(f"--years must have 1 or {num_elements} entries for --status mode.")
+
+            # Resources & write config
+            resources: ResourcesDict = {
+                "nodes": args.nodes,
+                "ppn": args.ppn,
+                "memory": args.memory,
+                "walltime": str(args.walltime),
+            }
+
+            create_config_file(
+                args.conda_envs,
+                args.component_names,
+                sample_names,
+                resources,
+                args.institution,
+                args.years,
+                runnames,
+                args.output
+            )
+            return
+                
         except PyMongoError as e:
             raise RuntimeError(f"Failed to connect to MongoDB when --status Failure: {e}") from e
-            
+
+    # ==============================
+    # FILESYSTEM MODES (original)
+    # ==============================
+
+    # Determine how many elements we are dealing with
+    
     # Handling cases based on input
     num_elements = None
     
@@ -304,6 +440,10 @@ def main():
     args.years = expand_list(args.years, num_elements)
     args.institution = expand_list(args.institution, num_elements)
 
+    bifrost_output_dir = os.environ.get("BIFROST_OUTPUT_DIR")
+    if not bifrost_output_dir:
+        raise EnvironmentError("BIFROST_OUTPUT_DIR is not set.")
+    
     #Determine runnames and sample_names for four different running modes
     runnames = []
     sample_names = []
@@ -396,3 +536,4 @@ def main():
 if __name__ == "__main__":
     main()
 
+#python create_config.py --component_names min_read_check --conda_envs v2.0.0 --sequence_ID 2510M9274_N_WGS_986_SSI
