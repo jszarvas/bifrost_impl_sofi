@@ -5,6 +5,7 @@ import json
 import os
 from typing import Any, Dict, List, Optional
 
+import yaml
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from bson import ObjectId
@@ -48,24 +49,142 @@ def run_find_one(
 
 
 def convert_objectid(obj: Any) -> Any:
-
     if isinstance(obj, dict):
         return {k: convert_objectid(v) for k, v in obj.items()}
-
     if isinstance(obj, list):
         return [convert_objectid(v) for v in obj]
-
     if isinstance(obj, ObjectId):
         return str(obj)
-
     if isinstance(obj, datetime.datetime):
         return obj.isoformat()
-
     return obj
+
 
 def save_json(data: Any, path: str) -> None:
     with open(path, "w") as f:
         json.dump(convert_objectid(data), f, indent=4)
+
+
+# -----------------------------
+# Config creation helpers
+# -----------------------------
+
+def extract_components(
+    doc: Dict[str, Any],
+    selected_components: Optional[List[str]],
+    stage: str
+) -> Dict[str, List[str]]:
+    """
+    From a sample document, extract component_names and conda_envs.
+
+    - components[*].name like "min_read_check__v2.2.8"
+    - short name: "min_read_check"
+    - version: "v2.2.8"
+    - component_names: ["bifrost_min_read_check", ...]
+    - conda_envs: ["bifrost_<stage>_min_read_check_v2.2.8", ...]
+    """
+    components = doc.get("components", [])
+    comp_names: List[str] = []
+    conda_envs: List[str] = []
+
+    for comp in components:
+        full_name = comp.get("name")
+        if not full_name:
+            continue
+
+        if "__" in full_name:
+            short, version = full_name.split("__", 1)
+        else:
+            short = full_name
+            version = "v1.0.0"
+
+        if selected_components:
+            if short not in selected_components:
+                continue
+
+        bifrost_name = f"bifrost_{short}"
+        if bifrost_name not in comp_names:
+            comp_names.append(bifrost_name)
+
+        env = f"bifrost_{stage}_{short}_{version}"
+        if env not in conda_envs:
+            conda_envs.append(env)
+
+    return {"component_names": comp_names, "conda_envs": conda_envs}
+
+
+def build_config_from_doc(
+    doc: Dict[str, Any],
+    institution_arg: Optional[str],
+    year_arg: Optional[str],
+    nodes: int,
+    ppn: int,
+    memory: str,
+    walltime: str,
+    selected_components: Optional[List[str]],
+) -> Dict[str, Any]:
+    # Stage for conda envs
+    stage = os.environ.get("BIFROST_STAGE", "dev")
+
+    # Components
+    comp_info = extract_components(doc, selected_components, stage)
+    component_names = comp_info["component_names"]
+    conda_envs = comp_info["conda_envs"]
+
+    # Institution and year
+    sample_info = (
+        doc.get("categories", {})
+           .get("sample_info", {})
+           .get("summary", {})
+    )
+
+    if institution_arg:
+        institution = [institution_arg]
+    else:
+        inst = sample_info.get("institution", "ssi")
+        institution = [inst]
+
+    if year_arg:
+        year = [year_arg]
+    else:
+        seq_date = sample_info.get("sequence_run_date", "")
+        year_val = seq_date[:4] if len(seq_date) >= 4 else str(datetime.datetime.now().year)
+        year = [year_val]
+
+    # runname and sample_names
+    # According to your mapping:
+    # - name (db) -> sample_names (config)
+    # - categories.sample_info.summary.sample_name -> runname
+    db_name_field = doc.get("name", "")
+    sample_name_field = sample_info.get("sample_name", db_name_field)
+
+    runname = [sample_name_field]
+    sample_names = [db_name_field]
+
+    resources = {
+        "nodes": nodes,
+        "ppn": ppn,
+        "memory": memory,
+        "walltime": walltime,
+    }
+
+    config = {
+        "component_names": component_names,
+        "conda_envs": conda_envs,
+        "institution": institution,
+        "year": year,
+        "runname": runname,
+        "sample_names": sample_names,
+        "resources": resources,
+    }
+
+    return config
+
+
+def save_config_yaml(config: Dict[str, Any], path: str) -> None:
+    with open(path, "w") as f:
+        yaml.dump(config, f, default_flow_style=False)
+    print(f"Config file '{path}' created successfully.")
 
 
 # -----------------------------
@@ -75,12 +194,12 @@ def save_json(data: Any, path: str) -> None:
 def main() -> None:
     default_dbkey = os.environ.get("BIFROST_DB_KEY")
 
-    parser = argparse.ArgumentParser(description="MongoDB exploration and query tool.")
+    parser = argparse.ArgumentParser(description="MongoDB exploration, query, and config tool.")
 
     parser.add_argument(
         "--dbkey",
         default=default_dbkey,
-        help="Environment variable containing MongoDB URI (default: BIFROST_DB_KEY)."
+        help="MongoDB URI (default: value of BIFROST_DB_KEY)."
     )
 
     parser.add_argument(
@@ -107,6 +226,62 @@ def main() -> None:
         help="Output JSON file to store results."
     )
 
+    # Config-related arguments
+    parser.add_argument(
+        "--create_config",
+        action="store_true",
+        help="If set, create a YAML config from the queried document."
+    )
+
+    parser.add_argument(
+        "--components",
+        type=lambda s: [x.strip() for x in s.split(",")],
+        help="Comma-separated list of short component names to include (e.g. min_read_check,assemblatron). "
+             "If omitted, all components in the document are used."
+    )
+
+    parser.add_argument(
+        "--institution",
+        help="Institution for config. If omitted, taken from document if available."
+    )
+
+    parser.add_argument(
+        "--year",
+        help="Year for config. If omitted, taken from document if available."
+    )
+
+    parser.add_argument(
+        "--nodes",
+        type=int,
+        default=1,
+        help="Nodes for resources (default: 1)."
+    )
+
+    parser.add_argument(
+        "--ppn",
+        type=int,
+        default=4,
+        help="Processors per node (default: 4)."
+    )
+
+    parser.add_argument(
+        "--memory",
+        default="2gb",
+        help="Memory for resources (default: 2gb)."
+    )
+
+    parser.add_argument(
+        "--walltime",
+        default="01:00:00",
+        help="Walltime for resources (default: 01:00:00)."
+    )
+
+    parser.add_argument(
+        "--output",
+        default="config.yaml",
+        help="Output YAML config filename (default: config.yaml)."
+    )
+
     args = parser.parse_args()
 
     if not args.dbkey:
@@ -117,8 +292,8 @@ def main() -> None:
     if not ping_database(client):
         raise RuntimeError("Failed to connect to MongoDB.")
     else:
-        print("succesfully connected to MongoDB")
-    
+        print("Successfully connected to MongoDB.")
+
     # -----------------------------
     # MODE 1: List all DBs
     # -----------------------------
@@ -141,18 +316,21 @@ def main() -> None:
         print(f"Available collections in {args.dbname}:")
         for c in collections:
             print(f"- {c}")
-
+        
         if args.json:
             save_json(collections, args.json)
             print(f"Saved collection list to {args.json}")
         return
 
     # -----------------------------
-    # MODE 3: Run a query
+    # MODE 3: Run a query (and optionally create config)
     # -----------------------------
     if args.dbname and args.collectionname and args.query:
         query_dict = parse_query_string(args.query)
         result = run_find_one(client, args.dbname, args.collectionname, query_dict)
+
+        #print("Query result:")
+        #print(result)
 
         if args.json:
             save_json(result, args.json)
@@ -161,6 +339,21 @@ def main() -> None:
             print("Query result:")
             print(result)
         
+        if args.create_config:
+            if not result:
+                raise RuntimeError("No document found for query; cannot create config.")
+            config = build_config_from_doc(
+                result,
+                institution_arg=args.institution,
+                year_arg=args.year,
+                nodes=args.nodes,
+                ppn=args.ppn,
+                memory=args.memory,
+                walltime=args.walltime,
+                selected_components=args.components,
+            )
+            save_config_yaml(config, args.output)
+
         return
 
     # -----------------------------
