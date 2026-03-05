@@ -1,0 +1,123 @@
+component_names:
+- bifrost_amrfinderplus
+- bifrost_assemblatron
+- bifrost_assembly_qc
+- bifrost_cge_mlst
+- bifrost_cge_resfinder
+- bifrost_chewbbaca
+- bifrost_enterobase
+- bifrost_min_read_check
+- bifrost_salmonella_subspecies_dtartrate
+- bifrost_seqsero
+- bifrost_sp_cdiff
+- bifrost_sp_ecoli
+- bifrost_ssi_stamper
+- bifrost_whats_my_species
+conda_envs:
+- bifrost_dev_amrfinderplus_v1.0.0
+- bifrost_dev_assemblatron_v2.3.3
+- bifrost_dev_assembly_qc_v2.2.23
+- bifrost_dev_cge_mlst_v2.2.10__5e385d4
+- bifrost_dev_cge_resfinder_v2.3.0
+- bifrost_dev_chewbbaca_v2.0.0
+- bifrost_dev_enterobase_v1.1.8
+- bifrost_dev_min_read_check_v2.2.8
+- bifrost_dev_salmonella_subspecies_dtartrate_v1.1.3
+- bifrost_dev_seqsero_v1.1.2
+- bifrost_dev_sp_cdiff_v0.0.1
+- bifrost_dev_sp_ecoli_v0.0.1
+- bifrost_dev_ssi_stamper_v2.2.15
+- bifrost_dev_whats_my_species_v2.2.11
+institution:
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+- FVST
+resources:
+  memory: 2gb
+  nodes: 1
+  ppn: 4
+  walltime: 01:00:00
+runname:
+- 24000010_MW-ESCEC
+- 24000017_MW-ESCEC
+- 24000016_MW-ESCEC
+- 24000014_MW-ESCEC
+- 24000024_MW-ESCEC
+- 24000020_MW-ESCEC
+- 24000012_MW-ESCEC
+- 24000026_MW-ESCEC
+- 24000022_MW-ESCEC
+- 24000008_MW-ESCEC
+- 24000025_MW-ESCEC
+- 24000007_MW-ESCEC
+- 24000006_MW-ESCEC
+- 24000018_MW-ESCEC
+- 24000015_MW-ESCEC
+- 24000013_MW-ESCEC
+- 24000023_MW-ESCEC
+- 24000021_MW-ESCEC
+- 24000011_MW-ESCEC
+- 24000019_MW-ESCEC
+- 24000009_MW-ESCEC
+sample_names:
+- testrun_ec___24000010_MW-ESCEC
+- testrun_ec___24000017_MW-ESCEC
+- testrun_ec___24000016_MW-ESCEC
+- testrun_ec___24000014_MW-ESCEC
+- testrun_ec___24000024_MW-ESCEC
+- testrun_ec___24000020_MW-ESCEC
+- testrun_ec___24000012_MW-ESCEC
+- testrun_ec___24000026_MW-ESCEC
+- testrun_ec___24000022_MW-ESCEC
+- testrun_ec___24000008_MW-ESCEC
+- testrun_ec___24000025_MW-ESCEC
+- testrun_ec___24000007_MW-ESCEC
+- testrun_ec___24000006_MW-ESCEC
+- testrun_ec___24000018_MW-ESCEC
+- testrun_ec___24000015_MW-ESCEC
+- testrun_ec___24000013_MW-ESCEC
+- testrun_ec___24000023_MW-ESCEC
+- testrun_ec___24000021_MW-ESCEC
+- testrun_ec___24000011_MW-ESCEC
+- testrun_ec___24000019_MW-ESCEC
+- testrun_ec___24000009-MW-ESCEC___24000009_MW-ESCEC
+year:
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
+- 28-1
