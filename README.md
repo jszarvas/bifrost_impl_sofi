@@ -63,9 +63,40 @@ python connect_db.py --dbname sofi-dev --collectionname samples --query "{'name'
 ```
 
 Query the database and collection creating the correct config format for rerunning pipeline
+
+#### one sample - based on name
 ```
 python connect_db.py --dbname sofi-dev --collectionname samples --query "{'name':'test_ecoli_single___1704H39235'}" --create_config --output configs/test_ecoli_single___1704H39235_config.yaml
+
+Successfully connected to MongoDB.
+Query matched 1 document(s).
+Config file 'configs/test_ecoli_single___1704H39235_config.yaml' created successfully.
 ```
+
+#### several samples - based on partial match on names
+```
+python connect_db.py   --dbname sofi-dev   --collectionname samples   --query "{\"name\": {\"\$regex\": \"testrun_ec\", \"\$options\": \"i\"}}"   --create_config   --output configs/testrun_ec_config.yaml
+
+Successfully connected to MongoDB.
+Query matched 21 document(s).
+Config file 'configs/testrun_ec_config.yaml' created successfully.
+```
+#### several sample - based on species
+```
+python connect_db.py --dbname sofi-dev --collectionname samples --query "{\"categories.sample_info.summary.provided_species\": {\"\$regex\": \"Escherichia coli\", \"\$options\": \"i\"}}" --create_config --output configs/ecoli_provided_species.yaml
+
+Successfully connected to MongoDB.
+Query matched 24 document(s).
+Config file 'configs/ecoli_provided_species.yaml' created successfully.
+```
+#### Validate config file structure
+```
+python validate_configs.py configs/testrun_ec_config.yaml configs/test_ecoli_single___1704H39235_config.yaml
+
+[OK]     configs/testrun_ec_config.yaml
+[OK]     configs/test_ecoli_single___1704H39235_config.yaml
+```
+
 
 
 ### Manual control of samples and components
