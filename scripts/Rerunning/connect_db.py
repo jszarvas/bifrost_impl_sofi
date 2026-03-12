@@ -74,6 +74,25 @@ def save_json(data: Any, path: str) -> None:
 # -----------------------------
 # Component helpers
 # -----------------------------
+def extract_year(value, min_year=1990, max_year=None):
+    if max_year is None:
+        max_year = datetime.datetime.now().year + 1
+
+    s = "" if value is None else str(value)
+
+    # try first 4
+    if len(s) >= 4:
+        y = s[:4]
+        if y.isdigit() and min_year <= int(y) <= max_year:
+            return y
+
+    # try last 4
+    if len(s) >= 4:
+        y = s[-4:]
+        if y.isdigit() and min_year <= int(y) <= max_year:
+            return y
+
+    return str(datetime.datetime.now().year)
 
 def parse_component_full_name(full_name: str) -> Tuple[str, str]:
     """
@@ -227,32 +246,38 @@ def build_config_from_docs(
     sample_names: List[str] = []
 
     for doc in docs:
-        sample_info = (
-            doc.get("categories", {})
-               .get("sample_info", {})
-               .get("summary", {})
-        )
+        sample_info = doc.get("categories", {}).get("sample_info", {})
+        summary = sample_info.get("summary", {})
+        metadata = sample_info.get("metadata", {})
+
 
         # Institution
         if institution_arg:
             inst = institution_arg
         else:
             inst = sample_info.get("institution", "ssi")
-        institutions.append(inst)
+        institutions.append(inst.lower())
 
         # Year
         if year_arg:
             year_val = year_arg
         else:
-            seq_date = sample_info.get("sequence_run_date", "")
-            year_val = seq_date[:4] if len(seq_date) >= 4 else str(datetime.datetime.now().year)
+            #seq_date = sample_info.get("sequence_run_date", "")
+            #metadata = sample_info.get("metadata") or {}
+            #print(f"metadata {metadata}")
+            #seq_date = metadata.get("created_at", "") if isinstance(metadata, dict) else ""
+            seq_date = metadata.get("created_at", "") if isinstance(metadata, dict) else ""
+            #print(f"seq_data {seq_date}")
+            year_val = extract_year(seq_date)
         years.append(year_val)
 
         # runname and sample_names
         db_name_field = doc.get("name", "")
-        sample_name_field = sample_info.get("sample_name", db_name_field)
-
-        runnames.append(sample_name_field)
+        #sample_name_field = sample_info.get("sofi_sequence_id", db_name_field)
+        runname_field = db_name_field.split("___", 1)[0]  # before first triple-underscore
+        
+        #runnames.append(sample_name_field)
+        runnames.append(runname_field)
         sample_names.append(db_name_field)
 
     resources = {
