@@ -12,7 +12,6 @@ from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from bson import ObjectId
 
-
 # -----------------------------
 # Connection + Utility Functions
 # -----------------------------
@@ -94,6 +93,17 @@ def extract_year(value, min_year=1990, max_year=None):
 
     return str(datetime.datetime.now().year)
 
+def infer_doc_year(doc: Dict[str, Any]) -> str:
+    """
+    Infer year from:
+      doc["categories"]["sample_info"]["metadata"]["created_at"]
+    Falls back to current year via extract_year().
+    """
+    sample_info = doc.get("categories", {}).get("sample_info", {})
+    metadata = sample_info.get("metadata", {})
+    seq_date = metadata.get("created_at", "") if isinstance(metadata, dict) else ""
+    return extract_year(seq_date)
+
 def parse_component_full_name(full_name: str) -> Tuple[str, str]:
     """
     From a component name like "min_read_check__v2.2.8" extract:
@@ -171,7 +181,6 @@ def select_components(
     all_shorts = set(comp_map.keys())
 
     if include_components and exclude_components:
-        # This should be prevented earlier, but keep a guard.
         raise ValueError("Cannot use --components and --exclude together. Choose one mode.")
 
     if include_components:
@@ -198,7 +207,6 @@ def select_components(
             conda_envs.append(env)
 
     return component_names, conda_envs
-
 
 # -----------------------------
 # Config creation helpers
@@ -251,24 +259,15 @@ def build_config_from_docs(
         metadata = sample_info.get("metadata", {})
 
 
-        # Institution
+        # Infer Institution
         if institution_arg:
             inst = institution_arg
         else:
             inst = sample_info.get("institution", "ssi")
         institutions.append(inst.lower())
 
-        # Year
-        if year_arg:
-            year_val = year_arg
-        else:
-            #seq_date = sample_info.get("sequence_run_date", "")
-            #metadata = sample_info.get("metadata") or {}
-            #print(f"metadata {metadata}")
-            #seq_date = metadata.get("created_at", "") if isinstance(metadata, dict) else ""
-            seq_date = metadata.get("created_at", "") if isinstance(metadata, dict) else ""
-            #print(f"seq_data {seq_date}")
-            year_val = extract_year(seq_date)
+        # Infer Year
+        year_val = infer_doc_year(doc)
         years.append(year_val)
 
         # runname and sample_names
@@ -376,9 +375,11 @@ def main() -> None:
 
     parser.add_argument(
         "--year",
-        help="Year for config. If omitted, taken from documents if available."
+        type=lambda s: [x.strip() for x in s.split(",")],
+        help="Comma-separated year filter (e.g. 2024 or 2024,2025). "
+             "If omitted, all inferred years are included."
     )
-
+    
     parser.add_argument(
         "--nodes",
         type=int,
@@ -464,6 +465,12 @@ def main() -> None:
 
         print(f"Query matched {len(results)} document(s).")
 
+        # Apply year filter, if provided
+        if args.year:
+            allowed_years = set(args.year)
+            results = [doc for doc in results if infer_doc_year(doc) in allowed_years]
+            print(f"{len(results)} document(s) remain after year filtering: {sorted(allowed_years)}")
+        
         if args.json:
             save_json(results, args.json)
             print(f"Saved query results to {args.json}")
@@ -471,6 +478,7 @@ def main() -> None:
         if args.create_config:
             if not results:
                 raise RuntimeError("No documents found for query; cannot create config.")
+
             config = build_config_from_docs(
                 results,
                 institution_arg=args.institution,
