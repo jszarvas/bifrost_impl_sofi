@@ -104,6 +104,17 @@ def infer_doc_year(doc: Dict[str, Any]) -> str:
     seq_date = metadata.get("created_at", "") if isinstance(metadata, dict) else ""
     return extract_year(seq_date)
 
+def infer_doc_institution(doc: Dict[str, Any]) -> str:
+    """
+    Infer institution from:
+      doc["categories"]["sample_info"]["institution"]
+    Falls back to 'ssi' if missing.
+    """
+    sample_info = doc.get("categories", {}).get("sample_info", {})
+    inst = sample_info.get("institution", "ssi")
+    return str(inst).lower()
+
+
 def parse_component_full_name(full_name: str) -> Tuple[str, str]:
     """
     From a component name like "min_read_check__v2.2.8" extract:
@@ -214,8 +225,6 @@ def select_components(
 
 def build_config_from_docs(
     docs: List[Dict[str, Any]],
-    institution_arg: Optional[str],
-    year_arg: Optional[str],
     nodes: int,
     ppn: int,
     memory: str,
@@ -260,12 +269,9 @@ def build_config_from_docs(
 
 
         # Infer Institution
-        if institution_arg:
-            inst = institution_arg
-        else:
-            inst = sample_info.get("institution", "ssi")
-        institutions.append(inst.lower())
-
+        inst = infer_doc_institution(doc)
+        institutions.append(inst)
+        
         # Infer Year
         year_val = infer_doc_year(doc)
         years.append(year_val)
@@ -370,7 +376,9 @@ def main() -> None:
 
     parser.add_argument(
         "--institution",
-        help="Institution for config. If omitted, taken from documents if available."
+        type=lambda s: [x.strip().lower() for x in s.split(",")],
+        help="Comma-separated institution filter based on inferred institution "
+             "(e.g. ssi or ssi,fvst). If omitted, all institutions are included."
     )
 
     parser.add_argument(
@@ -470,7 +478,12 @@ def main() -> None:
             allowed_years = set(args.year)
             results = [doc for doc in results if infer_doc_year(doc) in allowed_years]
             print(f"{len(results)} document(s) remain after year filtering: {sorted(allowed_years)}")
-        
+
+        if args.institution:
+            allowed_institutions = set(args.institution)
+            results = [doc for doc in results if infer_doc_institution(doc) in allowed_institutions]
+            print(f"{len(results)} document(s) remain after institution filtering: {sorted(allowed_institutions)}")
+            
         if args.json:
             save_json(results, args.json)
             print(f"Saved query results to {args.json}")
@@ -481,8 +494,6 @@ def main() -> None:
 
             config = build_config_from_docs(
                 results,
-                institution_arg=args.institution,
-                year_arg=args.year,
                 nodes=args.nodes,
                 ppn=args.ppn,
                 memory=args.memory,
