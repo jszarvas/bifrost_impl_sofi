@@ -6,7 +6,7 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 import re
 import datetime
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 import yaml
 from pymongo import MongoClient
@@ -201,6 +201,9 @@ def print_institution_counts(docs: List[Dict[str, Any]]) -> None:
     for inst, n in sorted(counts.items()):
         print(f"  {inst}: {n}")
 
+# ---------------------------------------------- #
+# Creating conda environment and component names
+# ---------------------------------------------- #
 
 def normalize_component_version(value: str) -> str:
     """
@@ -341,6 +344,61 @@ def select_components(
 
     return component_names, conda_envs
 
+
+def check_conda_env(config: Dict[str, Any]) -> None:
+    """
+    Check whether generated conda environments exist in:
+        $BIFROST_CONDA_PATH/envs/
+
+    Missing environments are removed from:
+      - config["conda_envs"]
+      - config["component_names"]
+
+    This function does NOT stop execution.
+    It only prints warnings and updates the config in place.
+    """
+    conda_base = os.environ.get("BIFROST_CONDA_PATH")
+    if not conda_base:
+        print("Warning: BIFROST_CONDA_PATH is not set. Skipping conda environment check.")
+        return
+
+    env_root = Path(conda_base) / "envs"
+    if not env_root.exists():
+        print(f"Warning: conda env directory does not exist: {env_root}")
+        print("Skipping conda environment check.")
+        return
+
+    component_names = config.get("component_names", [])
+    conda_envs = config.get("conda_envs", [])
+
+    if len(component_names) != len(conda_envs):
+        print(
+            "Warning: component_names and conda_envs have different lengths. "
+            "Skipping conda environment filtering."
+        )
+        return
+
+    kept_components: List[str] = []
+    kept_envs: List[str] = []
+    missing_envs: List[str] = []
+
+    for component_name, env_name in zip(component_names, conda_envs):
+        env_path = env_root / env_name
+        if env_path.exists():
+            kept_components.append(component_name)
+            kept_envs.append(env_name)
+        else:
+            missing_envs.append(env_name)
+
+    config["component_names"] = kept_components
+    config["conda_envs"] = kept_envs
+
+    if missing_envs:
+        print("Warning: the following conda environment(s) were not found and were removed from the YAML:")
+        for env in missing_envs:
+            print(f"  - {env}")
+    else:
+        print(f"All inferred conda environments were found in: {env_root}")
 
 # -----------------------------
 # Config creation helpers
@@ -606,6 +664,8 @@ def main() -> None:
                 selected_components=args.components,
                 excluded_components=args.exclude,
             )
+
+            check_conda_env(config)
             save_config_yaml(config, args.output)
 
         return
