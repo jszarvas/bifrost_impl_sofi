@@ -6,11 +6,13 @@ import os
 from typing import Any, Dict, List, Optional, Tuple
 import re
 import datetime
+from pathlib import PurePosixPath
 
 import yaml
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from bson import ObjectId
+from collections import Counter
 
 # -----------------------------
 # Connection + Utility Functions
@@ -71,8 +73,70 @@ def save_json(data: Any, path: str) -> None:
 
 
 # -----------------------------
+# Path-based inference helpers
+# -----------------------------
+
+def get_primary_data_path(doc: Dict[str, Any]) -> Optional[str]:
+    """
+    Return the first data path from:
+      1. categories.paired_reads.summary.data[0]
+      2. categories.contigs.summary.data[0]
+
+    Returns None if neither exists.
+    """
+    categories = doc.get("categories", {})
+
+    paired_reads = categories.get("paired_reads", {})
+    paired_summary = paired_reads.get("summary", {})
+    paired_data = paired_summary.get("data", [])
+    if isinstance(paired_data, list) and paired_data:
+        first = paired_data[0]
+        if first:
+            return str(first)
+
+    contigs = categories.get("contigs", {})
+    contigs_summary = contigs.get("summary", {})
+    contigs_data = contigs_summary.get("data", [])
+    if isinstance(contigs_data, list) and contigs_data:
+        first = contigs_data[0]
+        if first:
+            return str(first)
+
+    return None
+
+
+def extract_institution_and_year_from_path(path_str: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extract institution and year from a path like:
+      /home/projects/fvst_ssi_dtu/prod_data/output/ssi/2025/...
+
+    Using PurePosixPath(path).parts this becomes:
+      ('/', 'home', 'projects', 'fvst_ssi_dtu', 'prod_data', 'output', 'ssi', '2025', ...)
+
+    So:
+      institution = parts[6]
+      year        = parts[7]
+    """
+    parts = PurePosixPath(path_str).parts
+
+    institution = None
+    year = None
+
+    if len(parts) > 6:
+        institution = str(parts[6]).strip().lower() or None
+
+    if len(parts) > 7:
+        y = str(parts[7]).strip()
+        if y.isdigit():
+            year = y
+
+    return institution, year
+
+
+# -----------------------------
 # Component helpers
 # -----------------------------
+
 def extract_year(value, min_year=1990, max_year=None):
     if max_year is None:
         max_year = datetime.datetime.now().year + 1
@@ -93,26 +157,49 @@ def extract_year(value, min_year=1990, max_year=None):
 
     return str(datetime.datetime.now().year)
 
+
 def infer_doc_year(doc: Dict[str, Any]) -> str:
     """
-    Infer year from:
-      doc["categories"]["sample_info"]["metadata"]["created_at"]
-    Falls back to current year via extract_year().
-    """
-    sample_info = doc.get("categories", {}).get("sample_info", {})
-    metadata = sample_info.get("metadata", {})
-    seq_date = metadata.get("created_at", "") if isinstance(metadata, dict) else ""
-    return extract_year(seq_date)
+    Infer year from the first available data path:
+      1. categories.paired_reads.summary.data[0]
+      2. categories.contigs.summary.data[0]
 
-def infer_doc_institution(doc: Dict[str, Any]) -> str:
+    If path-based inference fails, fall back to current year.
     """
-    Infer institution from:
-      doc["categories"]["sample_info"]["institution"]
-    Falls back to 'ssi' if missing.
+    path_str = get_primary_data_path(doc)
+    if path_str:
+        _, year = extract_institution_and_year_from_path(path_str)
+        if year:
+            return year
+
+    return str(datetime.datetime.now().year)
+
+
+def infer_doc_institution(doc: Dict[str, Any]) -> Optional[str]:
     """
-    sample_info = doc.get("categories", {}).get("sample_info", {})
-    inst = sample_info.get("institution", "ssi")
-    return str(inst).lower()
+    Infer institution from the first available data path:
+      1. categories.paired_reads.summary.data[0]
+      2. categories.contigs.summary.data[0]
+
+    Returns None if missing.
+    """
+    path_str = get_primary_data_path(doc)
+    if path_str:
+        institution, _ = extract_institution_and_year_from_path(path_str)
+        return institution
+
+    return None
+
+
+def print_institution_counts(docs: List[Dict[str, Any]]) -> None:
+    counts = Counter()
+    for doc in docs:
+        inst = infer_doc_institution(doc)
+        counts[inst if inst is not None else "<missing>"] += 1
+
+    print("Institutions in current result set:")
+    for inst, n in sorted(counts.items()):
+        print(f"  {inst}: {n}")
 
 
 def parse_component_full_name(full_name: str) -> Tuple[str, str]:
@@ -208,7 +295,6 @@ def select_components(
         versions = comp_map.get(short, [])
         if not versions:
             continue
-        # Pick newest version by numeric tuple
         newest = max(versions, key=version_to_tuple)
         bifrost_name = f"bifrost_{short}"
         env = f"bifrost_{stage}_{short}_{newest}"
@@ -218,6 +304,7 @@ def select_components(
             conda_envs.append(env)
 
     return component_names, conda_envs
+
 
 # -----------------------------
 # Config creation helpers
@@ -242,13 +329,9 @@ def build_config_from_docs(
     if not docs:
         raise RuntimeError("No documents provided to build_config_from_docs.")
 
-    # Stage for conda envs
     stage = os.environ.get("BIFROST_STAGE", "dev")
-
-    # Collect all components from all docs
     comp_map = collect_components_from_docs(docs)
 
-    # Apply component selection rules
     component_names, conda_envs = select_components(
         comp_map,
         include_components=selected_components,
@@ -256,32 +339,21 @@ def build_config_from_docs(
         stage=stage,
     )
 
-    # Collect per-sample metadata
     institutions: List[str] = []
     years: List[str] = []
     runnames: List[str] = []
     sample_names: List[str] = []
 
     for doc in docs:
-        sample_info = doc.get("categories", {}).get("sample_info", {})
-        summary = sample_info.get("summary", {})
-        metadata = sample_info.get("metadata", {})
-
-
-        # Infer Institution
         inst = infer_doc_institution(doc)
-        institutions.append(inst)
-        
-        # Infer Year
+        institutions.append(inst if inst is not None else "")
+
         year_val = infer_doc_year(doc)
         years.append(year_val)
 
-        # runname and sample_names
         db_name_field = doc.get("name", "")
-        #sample_name_field = sample_info.get("sofi_sequence_id", db_name_field)
-        runname_field = db_name_field.split("___", 1)[0]  # before first triple-underscore
-        
-        #runnames.append(sample_name_field)
+        runname_field = db_name_field.split("___", 1)[0]
+
         runnames.append(runname_field)
         sample_names.append(db_name_field)
 
@@ -351,7 +423,6 @@ def main() -> None:
         help="Output JSON file to store results."
     )
 
-    # Config-related arguments
     parser.add_argument(
         "--create_config",
         action="store_true",
@@ -387,7 +458,7 @@ def main() -> None:
         help="Comma-separated year filter (e.g. 2024 or 2024,2025). "
              "If omitted, all inferred years are included."
     )
-    
+
     parser.add_argument(
         "--nodes",
         type=int,
@@ -422,7 +493,6 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    # Validate component/exclude combination
     if args.components and args.exclude:
         raise ValueError("You cannot use --components and --exclude together. Choose one mode.")
 
@@ -436,9 +506,6 @@ def main() -> None:
     else:
         print("Successfully connected to MongoDB.")
 
-    # -----------------------------
-    # MODE 1: List all DBs
-    # -----------------------------
     if args.dbname == "__LIST__":
         dbs = list_databases(client)
         print("Available databases:")
@@ -450,48 +517,50 @@ def main() -> None:
             print(f"Saved database list to {args.json}")
         return
 
-    # -----------------------------
-    # MODE 2: List collections in a DB
-    # -----------------------------
     if args.dbname and args.collectionname == "__LIST__":
         collections = list_collections(client, args.dbname)
         print(f"Available collections in {args.dbname}:")
         for c in collections:
             print(f"- {c}")
-        
+
         if args.json:
             save_json(collections, args.json)
             print(f"Saved collection list to {args.json}")
         return
 
-    # -----------------------------
-    # MODE 3: Run a query (multi-sample) and optionally create config
-    # -----------------------------
     if args.dbname and args.collectionname and args.query:
         query_dict = parse_query_string(args.query)
         results = run_find_many(client, args.dbname, args.collectionname, query_dict)
 
         print(f"Query matched {len(results)} document(s).")
 
-        # Apply year filter, if provided
         if args.year:
             allowed_years = set(args.year)
             results = [doc for doc in results if infer_doc_year(doc) in allowed_years]
             print(f"{len(results)} document(s) remain after year filtering: {sorted(allowed_years)}")
 
+        print_institution_counts(results)
+
         if args.institution:
-            allowed_institutions = set(args.institution)
-            results = [doc for doc in results if infer_doc_institution(doc) in allowed_institutions]
+            allowed_institutions = {x.strip().lower() for x in args.institution}
+            results = [
+                doc for doc in results
+                if infer_doc_institution(doc) in allowed_institutions
+            ]
             print(f"{len(results)} document(s) remain after institution filtering: {sorted(allowed_institutions)}")
-            
+
+        if not results:
+            print(
+                f"Warning: no documents matched the query after applying "
+                f"year={args.year or 'all'} and institution={args.institution or 'all'}."
+            )
+            return
+
         if args.json:
             save_json(results, args.json)
             print(f"Saved query results to {args.json}")
 
         if args.create_config:
-            if not results:
-                raise RuntimeError("No documents found for query; cannot create config.")
-
             config = build_config_from_docs(
                 results,
                 nodes=args.nodes,
@@ -505,12 +574,8 @@ def main() -> None:
 
         return
 
-    # -----------------------------
-    # If user gave insufficient arguments
-    # -----------------------------
     print("No valid mode selected. Use --help for usage details.")
 
 
 if __name__ == "__main__":
     main()
-
