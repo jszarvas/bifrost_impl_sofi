@@ -287,6 +287,50 @@ def collect_components_from_docs(
 
     return comp_map
 
+def collect_components_from_env() -> Dict[str, List[str]]:
+    """
+    Read component/version information from $BIFROST_COMPONENTS.
+
+    Example:
+      bifrost_min_read_check_v2.2.8
+      bifrost_whats_my_species_v2.2.11
+      bifrost_salmonella_subspecies_dtartrate_v1.1.3
+
+    Returns:
+      short_name -> list of normalized versions seen
+
+    If the variable is missing, empty, or contains no valid entries, returns {}.
+    """
+    raw = os.environ.get("BIFROST_COMPONENTS", "").strip()
+    if not raw:
+        return {}
+
+    comp_map: Dict[str, List[str]] = {}
+
+    for token in raw.split():
+        token = token.strip()
+        print(f"the existing tokens {token}")
+
+        if not token:
+            continue
+
+        m = re.fullmatch(r"bifrost_(.+)_(v?\d+(?:\.\d+){0,2})", token)
+        if not m:
+            print(f"Warning: could not parse entry in BIFROST_COMPONENTS: {token}")
+            continue
+
+        #print(f"m match {m}")
+        short = m.group(1)
+        #print(f"short match {short}")
+        
+        version = normalize_component_version(m.group(2))
+        #print(f"version {version}")
+        
+        comp_map.setdefault(short, [])
+        if version not in comp_map[short]:
+            comp_map[short].append(version)
+
+    return comp_map
 
 def select_components(
     comp_map: Dict[str, List[str]],
@@ -384,7 +428,7 @@ def check_conda_env(config: Dict[str, Any]) -> None:
 
     for component_name, env_name in zip(component_names, conda_envs):
         env_path = env_root / env_name
-        if env_path.exists():
+        if env_path.is_dir():
             kept_components.append(component_name)
             kept_envs.append(env_name)
         else:
@@ -424,7 +468,14 @@ def build_config_from_docs(
         raise RuntimeError("No documents provided to build_config_from_docs.")
 
     stage = os.environ.get("BIFROST_STAGE", "dev")
-    comp_map = collect_components_from_docs(docs)
+
+    # try to infer the component and environments from first the variable enxt from the mongoDB collections
+    comp_map = collect_components_from_env()
+    if comp_map:
+        print("Using components from BIFROST_COMPONENTS.")
+    else:
+        print("BIFROST_COMPONENTS not set or empty. Falling back to components inferred from Mongo documents.")
+        comp_map = collect_components_from_docs(docs)
 
     component_names, conda_envs = select_components(
         comp_map,
