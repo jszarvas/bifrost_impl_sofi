@@ -202,53 +202,86 @@ def print_institution_counts(docs: List[Dict[str, Any]]) -> None:
         print(f"  {inst}: {n}")
 
 
+def normalize_component_version(value: str) -> str:
+    """
+    Keep only the semantic version part from strings like:
+      v2.2.11
+      v2.2.11__5e385d4
+      2.2.11
+    Returns a normalized version string with leading 'v'.
+    """
+    m = re.search(r'(?:^|__)(v?\d+(?:\.\d+){0,2})(?:$|__)', value)
+    if not m:
+        return "v1.0.0"
+
+    version = m.group(1)
+    if not version.startswith("v"):
+        version = f"v{version}"
+    return version
+
+
 def parse_component_full_name(full_name: str) -> Tuple[str, str]:
     """
-    From a component name like "min_read_check__v2.2.8" extract:
+    From a component name like:
+      "min_read_check__v2.2.8"
+      "cge_mlst__v2.2.11__5e385d4"
+
+    extract:
       short:   "min_read_check"
-      version: "v2.2.8"
+      version: "v2.2.8" / "v2.2.11"
+
     If no version is present, default to "v1.0.0".
     """
     if "__" in full_name:
-        short, version = full_name.split("__", 1)
+        short, rest = full_name.split("__", 1)
     else:
         short = full_name
-        version = "v1.0.0"
-    return short, version
+        rest = ""
 
+    version = normalize_component_version(rest)
+    return short, version
 
 def version_to_tuple(version: str) -> Tuple[int, int, int]:
     """
-    Convert a version string like "v2.10.0" or "2.10.0" to a numeric tuple (2,10,0).
-    Non-matching parts default to 0.
+    Convert a version string like:
+      v2.10.0
+      2.10.0
+      v2.10.0__abcdef
+
+    into (2, 10, 0).
     """
-    m = re.search(r'v?(\d+)(?:\.(\d+))?(?:\.(\d+))?', version)
+    normalized = normalize_component_version(version)
+    m = re.search(r'v(\d+)(?:\.(\d+))?(?:\.(\d+))?', normalized)
     if not m:
         return (0, 0, 0)
+
     major = int(m.group(1)) if m.group(1) else 0
     minor = int(m.group(2)) if m.group(2) else 0
     patch = int(m.group(3)) if m.group(3) else 0
     return (major, minor, patch)
-
 
 def collect_components_from_docs(
     docs: List[Dict[str, Any]]
 ) -> Dict[str, List[str]]:
     """
     From all documents, collect:
-      short_name -> list of versions seen
+      short_name -> list of normalized versions seen
     """
     comp_map: Dict[str, List[str]] = {}
+
     for doc in docs:
         components = doc.get("components", [])
         for comp in components:
             full_name = comp.get("name")
             if not full_name:
                 continue
+
             short, version = parse_component_full_name(full_name)
             comp_map.setdefault(short, [])
+
             if version not in comp_map[short]:
                 comp_map[short].append(version)
+
     return comp_map
 
 
@@ -276,6 +309,7 @@ def select_components(
       conda_envs:      ["bifrost_<stage>_<short>_<version>", ...]
     where <version> is the newest version per short (numeric comparison).
     """
+
     all_shorts = set(comp_map.keys())
 
     if include_components and exclude_components:
@@ -295,9 +329,11 @@ def select_components(
         versions = comp_map.get(short, [])
         if not versions:
             continue
+
         newest = max(versions, key=version_to_tuple)
         bifrost_name = f"bifrost_{short}"
         env = f"bifrost_{stage}_{short}_{newest}"
+
         if bifrost_name not in component_names:
             component_names.append(bifrost_name)
         if env not in conda_envs:
