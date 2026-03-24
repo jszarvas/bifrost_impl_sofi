@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-source /home/projects/fvst_ssi_dtu/prod_app/settings/env_vars.sh
+#source /home/projects/fvst_ssi_dtu/prod_app/settings/env_vars.sh
 
 umask 002
 

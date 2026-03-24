@@ -42,13 +42,28 @@ submit_sample_component() {
   local PREVIOUS_ID="$3"
   local sample_name="$4"
 
-  local LOG_FILE="${PWD}/bifrost_${COMPONENT}_pre_sh.log"
 
   local COMPONENT_VERSION=v${COMPONENT##*_v}
   local COMPONENT_NAME=${COMPONENT%_v*}
   local COMPONENT_CLEAN_NAME=${COMPONENT_NAME#bifrost_}
   local STAGE=${BIFROST_STAGE:+${BIFROST_STAGE}_}
 
+  local LOG_FILE="${PWD}/${COMPONENT_CLEAN_NAME}_pre_sh.log"
+
+  
+  local cpus=$BIFROST_JOB_CPUS
+  local mem=$BIFROST_JOB_MEM
+  local time=$BIFROST_JOB_TIME
+  
+  echo $COMPONENT_CLEAN_NAME $BIG_COMPONENTS >> $LOG_FILE
+  if string_contains $COMPONENT_CLEAN_NAME "$BIG_COMPONENTS"; then
+      local cpus=$BIFROST_CPUS_BIG
+      local mem=$BIFROST_MEM_BIG
+  elif string_contains $COMPONENT_CLEAN_NAME "$KRAKEN_COMPONENTS"; then
+      local cpus=$BIFROST_CPUS_KRAKEN
+      local mem=$BIFROST_MEM_KRAKEN
+  fi
+  echo cpus=$cpus mem=$mem >> $LOG_FILE
   local CONDA_ENV_NAME=bifrost_${STAGE}${COMPONENT_CLEAN_NAME}_${COMPONENT_VERSION}
 
   local command=$(echo 'echo "[INFO] submit_sample_component with SAMPLE '$SAMPLE' for component '$COMPONENT' for sample_name '$sample_name'" | tee -a '$LOG_FILE';' \
@@ -72,7 +87,7 @@ submit_sample_component() {
       -W umask=002 \
       -N "${SAMPLE}_${COMPONENT_NAME}_bf" \
       -W x=advres:$BIFROST_RESNODES \
-      -l nodes=1:ppn=$BIFROST_JOB_CPUS,mem=$BIFROST_JOB_MEM,walltime=$BIFROST_JOB_TIME \
+      -l nodes=1:ppn=$cpus,mem=$mem,walltime=$time \
     );
   
   #log_message "Sample component job submitted with ID: $SAMPLE_PIPELINE_ID"

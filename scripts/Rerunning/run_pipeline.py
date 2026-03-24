@@ -68,7 +68,7 @@ def prepare_qsub_script(conda_env: str,component_name: str,sample_name,in_dir: s
 #module load tools
 #module load {os.environ['CONDA_VERSION']}\
     Bifrost_module_cmd = f"""eval "$(conda shell.bash hook)"\n
-cd /home/projects/fvst_ssi_dtu/{os.environ['BIFROST_STAGE']}_app\n
+cd {os.environ['BASE_DIR']}\n
 . settings/env_vars.sh\n
 cd {in_dir}\n
 conda activate {conda_env}\n
