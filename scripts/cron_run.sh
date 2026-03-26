@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-#source /home/projects/fvst_ssi_dtu/prod_app/settings/env_vars.sh
+source /home/projects/fvst_ssi_dtu/test_app/settings/env_vars.sh
 
 umask 002
 
@@ -13,9 +13,11 @@ echo "" | tee -a $LOG
 echo -n "cron_run.sh starting ($USER@$HOSTNAME) " | tee -a $LOG
 date | tee -a $LOG
 set +ue
+echo source /etc/bashrc
 source /etc/bashrc | tee -a $LOG
 set -ue
 ## Load git settings
+echo bash ../settings/git_settings.sh
 bash ../settings/git_settings.sh
 #bash -l -c "utils/mailer.sh utils/mailer/run_complete_message.txt utils/mailer/ssi_recipients.txt 2>&1 | tee -a $LOG"
 echo "Cleaning" | tee -a $LOG
