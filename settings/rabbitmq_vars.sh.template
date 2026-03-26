@@ -1,0 +1,1 @@
+export RABBITMQ_KEY="amqp://user:pass@server/"
