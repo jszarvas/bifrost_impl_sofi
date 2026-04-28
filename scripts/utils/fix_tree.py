@@ -140,12 +140,12 @@ def process_path(
 
     if stat.S_ISDIR(st.st_mode):
         if gid is not None:
-            set_group(path, gid, dry_run)
-        set_mode(path, dir_mode, dry_run)
+            set_group(path, gid, dry_run, verbose)
+        set_mode(path, dir_mode, dry_run, verbose)
     elif stat.S_ISREG(st.st_mode):
         if gid is not None:
-            set_group(path, gid, dry_run)
-        set_mode(path, file_mode, dry_run)
+            set_group(path, gid, dry_run, verbose)
+        set_mode(path, file_mode, dry_run, verbose)
     else:
         if verbose or dry_run:
             print(f"skip special: {path}")
@@ -161,16 +161,16 @@ def walk_tree(
 ) -> None:
     """Walk the tree top-down and process directories and files."""
     # Process root itself first.
-    process_path(root, uid, gid, dir_mode, file_mode, dry_run)
+    process_path(root, uid, gid, dir_mode, file_mode, dry_run, verbose)
 
     for dirpath, dirnames, filenames in os.walk(root, topdown=True, followlinks=False):
         base = Path(dirpath)
 
         for dirname in dirnames:
-            process_path(base / dirname, uid, gid, dir_mode, file_mode, dry_run)
+            process_path(base / dirname, uid, gid, dir_mode, file_mode, dry_run, verbose)
 
         for filename in filenames:
-            process_path(base / filename, uid, gid, dir_mode, file_mode, dry_run)
+            process_path(base / filename, uid, gid, dir_mode, file_mode, dry_run, verbose)
 
 
 def build_parser() -> argparse.ArgumentParser:
