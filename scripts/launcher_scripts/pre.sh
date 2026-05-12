@@ -71,6 +71,7 @@ submit_sample_component() {
       'module load '$CONDA_VERSION';' \
       'eval "$(conda shell.bash hook)";' \
       'conda activate "'$CONDA_ENV_NAME'";' \
+      'umask 0002;' \
       'python -m "'$COMPONENT_NAME'" --sample_name "'$sample_name'" ;')
   
   echo $command >> $LOG_FILE #> command.txt
@@ -87,7 +88,7 @@ submit_sample_component() {
       -W umask=002 \
       -N "${SAMPLE}_${COMPONENT_NAME}_bf" \
       -W x=advres:$BIFROST_RESNODES \
-      -l nodes=1:ppn=$cpus,mem=$mem,walltime=$time \
+      -l nodes=g-05-c0359:ppn=$cpus,mem=$mem,walltime=$time \
     );
   
   #log_message "Sample component job submitted with ID: $SAMPLE_PIPELINE_ID"
