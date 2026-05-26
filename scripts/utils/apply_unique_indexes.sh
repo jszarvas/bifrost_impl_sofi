@@ -12,6 +12,7 @@ command="
 db.runs.createIndex({ \"name\": 1 },{ unique: true })
 db.components.createIndex({ \"name\": 1 },{ unique: true })
 db.samples.createIndex({ \"categories.sample_info.summary.sofi_sequence_id\": 1 },{ unique: true })
+db.sample_components.createIndex({ \"name\": 1 },{ unique: true })
 "
 
 echo "Executing \"$command\" on \"$BIFROST_DB_KEY\""
