@@ -82,7 +82,9 @@ python -m $COMPONENT_NAME \
         -reads $BIFROST_ASM_RUN_DIR/samples \
         -meta $BIFROST_ASM_RUN_DIR/sofi_metadata.clean.tsv \
         -name $BIFROST_RUN_NAME \
-        -out $BIFROST_ASM_RUN_DIR;
+        -out $BIFROST_ASM_RUN_DIR \
+        --run_type events \
+        --run_mode ASM;
 
 $CONDACMD deactivate
 
