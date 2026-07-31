@@ -3,6 +3,8 @@ import yaml
 import subprocess
 import argparse
 from typing import List, Dict
+import pandas as pd
+from itertools import zip_longest
 
 def load_config(config_file: str) -> Dict:
     """Load the YAML configuration file."""
@@ -37,19 +39,7 @@ def check_conda_environment(required_envs: List[str]) -> None:
     else:
         print("All required Conda environments are present.")
 
-def construct_output_path(sample_name: str):
-    """
-    Construct the output path for the given sample using environment variables.
-    """
-    bifrost_output_dir = os.environ["BIFROST_OUTPUT_DIR"]
-    bifrost_institution = os.environ["BIFROST_INSTITUTION"]
-    bifrost_year = os.environ["BIFROST_YEAR"]
-    # Assuming the sample name corresponds to the run name
-    run_name = sample_name
-    
-    return os.path.join(bifrost_output_dir, bifrost_institution, bifrost_year, run_name)
-
-def prepare_qsub_script(conda_env: str,component_name: str,sample_name,in_dir: str,out_dir: str,qsub_res: dict, run: bool = False)->str:
+def prepare_qsub_script(conda_env: str,component_name: str,sample_name,in_dir: str,out_dir: str, runlauncher_args: str, qsub_res: dict, previous_job: str, dryrun: bool = False)->str:
 
     # Check if in_dir exists
     if not os.path.exists(in_dir):
@@ -58,16 +48,29 @@ def prepare_qsub_script(conda_env: str,component_name: str,sample_name,in_dir: s
     # Ensure out_dir exists or create it
     os.makedirs(out_dir, exist_ok=True)
     print(f"Output directory '{out_dir}' is ready.")
- 
+
+    job_dependency = ""
+    if previous_job != "0":
+        job_dependency = f"\n#PBS -W depend=afterany:{previous_job}"
+
     #Define job name and path
-    job_name = f"{component_name}_{conda_env}_{sample_name}"
+    suffix = ""
+    if component_name == "bifrost_run_launcher" and runlauncher_args.find("--finish") > -1:
+        suffix = "_fin"
+    job_name = f"{conda_env}_{sample_name}{suffix}"
     
     print(f"{sample_name} is run with conda environment {conda_env} for component {component_name}")
     print(f"job name is {job_name}")
 
-#module load tools
-#module load {os.environ['CONDA_VERSION']}\
-    Bifrost_module_cmd = f"""eval "$(conda shell.bash hook)"\n
+    runlauncher_cmd = f"""eval "$(conda shell.bash hook)"\n
+cd {os.environ['BASE_DIR']}\n
+. settings/env_vars.sh\n
+cd {in_dir}\n
+conda activate {conda_env}\n
+python -m {component_name} --re_run --sample_subset {sample_name.split("___")[1]} --outdir {os.path.dirname(out_dir)} {runlauncher_args} \n
+conda deactivate\n"""
+
+    component_cmd = f"""eval "$(conda shell.bash hook)"\n
 cd {os.environ['BASE_DIR']}\n
 . settings/env_vars.sh\n
 cd {in_dir}\n
@@ -75,11 +78,16 @@ conda activate {conda_env}\n
 python -m {component_name} --sample_name {sample_name} --outdir {out_dir}\n
 conda deactivate\n"""
 
+    # arguments to run_launcher
+    Bifrost_module_cmd = component_cmd
+    if component_name == "bifrost_run_launcher":
+        Bifrost_module_cmd = runlauncher_cmd
+
     #print(f"python module command is \n {Bifrost_module_cmd}")
     
     qsub_job_cmd = f"""#!/bin/bash
 #PBS -N {job_name}
-#PBS -W x=advres:{os.environ['BIFROST_RESNODES']}
+#PBS -W x=advres:{os.environ['BIFROST_RESNODES']}{job_dependency}
 #PBS -W umask=002
 #PBS -W group_list={os.environ['BIFROST_JOB_ACCOUNT']}
 #PBS -A {os.environ['BIFROST_JOB_ACCOUNT']}
@@ -91,27 +99,30 @@ conda deactivate\n"""
 set -euo pipefail\n
 {Bifrost_module_cmd}"""
 
-    # create qsub script
-    
-    #Save the job script to a file
-    job_script_path = f"{out_dir}/job_{job_name}.pbs"
-    with open(job_script_path, "w") as job_script_file:
-        job_script_file.write(f"{qsub_job_cmd}")
+    pbsjob_id = "0"
+    if dryrun == False:
+        #Save the job script to a file
+        job_script_path = f"{out_dir}/job_{job_name}.pbs"
+        with open(job_script_path, "w") as job_script_file:
+            job_script_file.write(f"{qsub_job_cmd}")
 
-    if run == False:
         print(f"Submitting PBS job script: {job_script_path}")
-        subprocess.run(["qsub", job_script_path], check=True)
+        p = subprocess.run(["qsub", job_script_path], check=True, capture_output=True, text=True)
+        pbsjob_id = p.stdout.strip()
+    else:
+        print(qsub_job_cmd)
+        print("--------------------------------")
 
-    return job_script_path
+    return pbsjob_id
 
-def main(config_file: str, run: bool=False) -> None:
+def main(config_file: str, dryrun: bool=False) -> None:
     """
     Main function to load the config, validate environment variables, and submit jobs.
     """
 
     # Check required environment variables
     #required_env_vars = ["BIFROST_DB_KEY","BIFROST_INSTALL_DIR","BIFROST_OUTPUT_DIR", "BIFROST_INSTITUTION", "BIFROST_YEAR", "CONDA_VERSION"]
-    required_env_vars = ["BIFROST_DB_KEY","BIFROST_INSTALL_DIR","BIFROST_OUTPUT_DIR","BIFROST_STAGE","BIFROST_RESNODES","QSUB_KEEP_VARS"]
+    required_env_vars = ["BIFROST_DB_KEY","BIFROST_INSTALL_DIR","BIFROST_OUTPUT_DIR","BIFROST_ASM_OUTPUT_DIR","BIFROST_STAGE","BIFROST_RESNODES","QSUB_KEEP_VARS"]
    
     check_environment_variables(required_env_vars,True)
 
@@ -139,49 +150,55 @@ def main(config_file: str, run: bool=False) -> None:
     institutions = config["institution"]
     years = config["year"]
     runnames = config["runname"]
-    
-    print("length ",len(years))
-    for institution,year,runname in zip(institutions,years,runnames):
-        print(f"test : {institution}/{year}/{runname}")
+    runmodes = config["run_mode"]
 
-    bifrost_outdir = str(os.environ['BIFROST_OUTPUT_DIR'])
-    print(f"bifrost_outdir {bifrost_outdir}")
+    bifrost_outdir: Dict[str] = {}
+    if len(samples) == len(runmodes):
+        for sample, rmode in zip(samples, runmodes):
+            if rmode == "SEQ":
+                bifrost_outdir[sample] = str(os.environ['BIFROST_OUTPUT_DIR'])
+            else:
+                bifrost_outdir[sample] = str(os.environ['BIFROST_ASM_OUTPUT_DIR'])
+    else:
+        # default to SEQ
+        bifrost_outdir = {s: str(os.environ['BIFROST_OUTPUT_DIR']) for s in samples}
+
+    pbsjob_ids = {x: ["0"] for x in samples}
+
+    run_launcher_args: Dict[str] = {}
+    if "bifrost_run_launcher" in components:
+        i = components.index("bifrost_run_launcher")
+        component = components.pop(i)
+        conda_env = conda_envs.pop(i)
+        selected_components = ",".join([f"bifrost_{'_'.join(x.split('_')[2:])}" for x in conda_envs])
+        components = [component] + components + [component]
+        conda_envs = [conda_env] + conda_envs + [conda_env]
+
+        run_launcher_args = {x: f" --run_mode {rmode} --component_subset {selected_components} --re_run_components" for x, rmode in zip_longest(samples, runmodes, fillvalue=runmodes[0])}
+
 
     for component, conda_env in zip(components, conda_envs):
         if len(samples) == len(years): #sample specific years - e.g. 2022,2024
-            if len(samples) == len(institutions): #sample specific institutions - e.g. ssi,fvst
-                for sample,runname,year,institution in zip(samples,runnames,years,institutions): #ensure accurate pairing between sample specific information
-                    workdir = os.path.join(bifrost_outdir,institution,year,runname)
-                    print(f"workdir 1 works as {workdir}")
-                    output_dir = os.path.join(workdir,sample)
-                    print(f"outdir 1 works as {output_dir}")
-                    prepare_qsub_script(conda_env,component,sample,workdir,output_dir,resources,run)
-            else:
-                for sample,runname,year in zip(samples,runnames,years): #samples from same institutions
-                    institution = institutions[0]
-                    workdir = os.path.join(bifrost_outdir,institution,year)
-                    print(f"workdir 2 works as {workdir}")
-                    output_dir = os.path.join(workdir,runname)
-                    print(f"outdir 2 works as {output_dir}")
-                    prepare_qsub_script(conda_env,component,sample,workdir,output_dir,resources,run)
+            for sample,runname,year,institution in zip_longest(samples,runnames,years,institutions, fillvalue=institutions[0]): #ensure accurate pairing between sample specific information
+                workdir = os.path.join(bifrost_outdir[sample],institution,year,runname)
+                print(f"workdir as {workdir}")
+                output_dir = os.path.join(workdir,sample)
+                print(f"outdir as {output_dir}")
+                pbsjob_ids[sample].append(prepare_qsub_script(conda_env,component,sample,workdir,output_dir,run_launcher_args[sample],resources,pbsjob_ids[sample][-1],dryrun))
+                if component == "bifrost_run_launcher":
+                    run_launcher_args[sample] = run_launcher_args[sample].replace("--re_run_components", "--finish")
         else: #samples from same year
             year = years[0]
-            for sample in samples:
-                if len(samples) == len(institutions): #potentially different institutions
-                    for sample,runname,institution in zip(samples,runnames,institutions):
-                        workdir = os.path.join(bifrost_outdir,institution,year)
-                        print(f"workdir 3 works as {workdir}")
-                        output_dir = os.path.join(workdir,runname)
-                        print(f"outdir 3 works as {output_dir}")
-                        prepare_qsub_script(conda_env,component,sample,workdir,output_dir,resources,run)
-                else:
-                    for sample,runname in zip(samples,runnames):
-                        institution = institutions[0]
-                        workdir = os.path.join(bifrost_outdir,institution,year)
-                        print(f"workdir 4 works as {workdir}")
-                        output_dir = os.path.join(workdir,runname)
-                        print(f"outdir 4 works as {output_dir}")
-                        prepare_qsub_script(conda_env,component,sample,workdir,output_dir,resources,run)
+            print(f"Year is {year}")
+                #potentially different institutions
+            for sample,runname,year,institution in zip_longest(samples,runnames,years,institutions, fillvalue=institutions[0]):
+                workdir = os.path.join(bifrost_outdir[sample],institution,year)
+                print(f"workdir as {workdir}")
+                output_dir = os.path.join(workdir,runname)
+                print(f"outdir as {output_dir}")
+                pbsjob_ids[sample].append(prepare_qsub_script(conda_env,component,sample,workdir,output_dir,run_launcher_args[sample],resources,pbsjob_ids[sample][-1],dryrun))
+                if component == "bifrost_run_launcher":
+                        run_launcher_args[sample] = run_launcher_args[sample].replace("--re_run_components", "--finish")
 
 if __name__ == "__main__":
     

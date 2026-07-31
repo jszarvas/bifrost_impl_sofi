@@ -81,28 +81,31 @@ def get_primary_data_path(doc: Dict[str, Any]) -> Optional[str]:
     Return the first data path from:
       1. categories.paired_reads.summary.data[0]
       2. categories.contigs.summary.data[0]
+      3. categories.events.summary.data
 
     Returns None if neither exists.
     """
     categories = doc.get("categories", {})
 
     paired_reads = categories.get("paired_reads", {})
-    paired_summary = paired_reads.get("summary", {})
-    paired_data = paired_summary.get("data", [])
-    if isinstance(paired_data, list) and paired_data:
-        first = paired_data[0]
-        if first:
-            return str(first)
-
-    contigs = categories.get("contigs", {})
-    contigs_summary = contigs.get("summary", {})
-    contigs_data = contigs_summary.get("data", [])
-    if isinstance(contigs_data, list) and contigs_data:
-        first = contigs_data[0]
-        if first:
-            return str(first)
-
-    return None
+    if paired_reads:
+        summary = paired_reads.get("summary", {})
+    else:
+        contigs = categories.get("contigs", {})
+        if contigs:
+            summary = contigs.get("summary", {})
+        else:
+            events = categories.get("events", {})
+            if events:
+                summary = events.get("summary", {})
+    summmary_data = summary.get("data", [])
+    if isinstance(summmary_data, list) and summmary_data:
+        first = summmary_data[0]
+    elif isinstance(summmary_data, str) and summmary_data:
+        first = summmary_data
+    else:
+        first = None
+    return first
 
 
 def extract_institution_and_year_from_path(path_str: str) -> Tuple[Optional[str], Optional[str]]:
@@ -111,65 +114,67 @@ def extract_institution_and_year_from_path(path_str: str) -> Tuple[Optional[str]
       /home/projects/fvst_ssi_dtu/prod_data/output/ssi/2025/...
 
     Using PurePosixPath(path).parts this becomes:
-      ('/', 'home', 'projects', 'fvst_ssi_dtu', 'prod_data', 'output', 'ssi', '2025', ...)
+      ('/', 'home', 'projects', 'fvst_ssi_dtu', 'prod_data', 'output', 'ssi', '2025', 'run', 'samples', 'filename')
 
     So:
       institution = parts[6]
       year        = parts[7]
     """
     parts = PurePosixPath(path_str).parts
-
     institution = None
     year = None
-
-    if len(parts) > 6:
-        institution = str(parts[6]).strip().lower() or None
-
-    if len(parts) > 7:
-        y = str(parts[7]).strip()
-        if y.isdigit():
-            year = y
-
+    if parts:
+        if parts[-2] == "samples":
+            # working backwards
+            institution = parts[-5].lower()
+            y = parts[-4]
+            if y.isdigit():
+                year = y
+        else:
+            #forward
+            if len(parts) > 7:
+                institution = parts[6].lower()
+                y = parts[7]
+                if y.isdigit():
+                    year = y
     return institution, year
 
+def extract_runmode_from_path(path_str: str) -> str:
+    """
+    Extract run mode SEQ (output) or ASM (asmoutput) from output path:
+      /home/projects/fvst_ssi_dtu/prod_data/output/ssi/2025/...
+    """
+    parts = PurePosixPath(path_str).parts
+    run_mode = "SEQ"
+    if parts:
+        if parts[-2] == "samples":
+            # working backwards
+            if parts[-6] == "asmoutput":
+                run_mode = "ASM"
+    return run_mode
 
 # -----------------------------
 # Component helpers
 # -----------------------------
 
-def extract_year(value, min_year=1990, max_year=None):
-    if max_year is None:
-        max_year = datetime.datetime.now().year + 1
-
-    s = "" if value is None else str(value)
-
-    # try first 4
-    if len(s) >= 4:
-        y = s[:4]
-        if y.isdigit() and min_year <= int(y) <= max_year:
-            return y
-
-    # try last 4
-    if len(s) >= 4:
-        y = s[-4:]
-        if y.isdigit() and min_year <= int(y) <= max_year:
-            return y
-
-    return str(datetime.datetime.now().year)
-
+def infer_doc_mode(doc: Dict[str, Any]) -> str:
+    """
+    Infer run mode from the first available data path.
+    SEQ is the default.
+    """
+    path_str = get_primary_data_path(doc)
+    if path_str is not None:
+        return(extract_runmode_from_path(path_str))
 
 def infer_doc_year(doc: Dict[str, Any]) -> str:
     """
-    Infer year from the first available data path:
-      1. categories.paired_reads.summary.data[0]
-      2. categories.contigs.summary.data[0]
-
+    Infer year from the first available data path.
     If path-based inference fails, fall back to current year.
     """
     path_str = get_primary_data_path(doc)
-    if path_str:
+    if path_str is not None:
         _, year = extract_institution_and_year_from_path(path_str)
-        if year:
+        if year is not None:
             return year
 
     return str(datetime.datetime.now().year)
@@ -177,14 +182,11 @@ def infer_doc_year(doc: Dict[str, Any]) -> str:
 
 def infer_doc_institution(doc: Dict[str, Any]) -> Optional[str]:
     """
-    Infer institution from the first available data path:
-      1. categories.paired_reads.summary.data[0]
-      2. categories.contigs.summary.data[0]
-
+    Infer institution from the first available data path.
     Returns None if missing.
     """
     path_str = get_primary_data_path(doc)
-    if path_str:
+    if path_str is not None:
         institution, _ = extract_institution_and_year_from_path(path_str)
         return institution
 
@@ -301,15 +303,16 @@ def collect_components_from_env() -> Dict[str, List[str]]:
 
     If the variable is missing, empty, or contains no valid entries, returns {}.
     """
-    raw = os.environ.get("BIFROST_COMPONENTS", "").strip()
+    raw = os.environ.get("BIFROST_RUN_LAUNCHER", "").strip() + " " + os.environ.get("BIFROST_COMPONENTS", "").strip() + " " + os.environ.get("BIFROST_COMPONENTS_ASM", "").strip()
     if not raw:
         return {}
 
     comp_map: Dict[str, List[str]] = {}
 
+    print("The available list of components in the env variables:")
     for token in raw.split():
         token = token.strip()
-        print(f"the existing tokens {token}")
+        print(f"{token}")
 
         if not token:
             continue
@@ -372,19 +375,18 @@ def select_components(
     component_names: List[str] = []
     conda_envs: List[str] = []
 
-    for short in sorted(selected_shorts):
+    for short in selected_shorts:
         versions = comp_map.get(short, [])
         if not versions:
+            print(f"[Warning] Requested {short} not found in components")
             continue
 
         newest = max(versions, key=version_to_tuple)
         bifrost_name = f"bifrost_{short}"
         env = f"bifrost_{stage}_{short}_{newest}"
 
-        if bifrost_name not in component_names:
-            component_names.append(bifrost_name)
-        if env not in conda_envs:
-            conda_envs.append(env)
+        component_names.append(bifrost_name)
+        conda_envs.append(env)
 
     return component_names, conda_envs
 
@@ -486,6 +488,7 @@ def build_config_from_docs(
 
     institutions: List[str] = []
     years: List[str] = []
+    runmodes: List[str] = []
     runnames: List[str] = []
     sample_names: List[str] = []
 
@@ -495,6 +498,8 @@ def build_config_from_docs(
 
         year_val = infer_doc_year(doc)
         years.append(year_val)
+
+        runmodes.append(infer_doc_mode(doc))
 
         db_name_field = doc.get("name", "")
         runname_field = db_name_field.split("___", 1)[0]
@@ -514,6 +519,7 @@ def build_config_from_docs(
         "conda_envs": conda_envs,
         "institution": institutions,
         "year": years,
+        "run_mode": runmodes,
         "runname": runnames,
         "sample_names": sample_names,
         "resources": resources,
@@ -660,6 +666,7 @@ def main() -> None:
         if args.json:
             save_json(dbs, args.json)
             print(f"Saved database list to {args.json}")
+        client.close()
         return
 
     if args.dbname and args.collectionname == "__LIST__":
@@ -671,13 +678,19 @@ def main() -> None:
         if args.json:
             save_json(collections, args.json)
             print(f"Saved collection list to {args.json}")
+        client.close()
         return
 
     if args.dbname and args.collectionname and args.query:
         query_dict = parse_query_string(args.query)
         results = run_find_many(client, args.dbname, args.collectionname, query_dict)
+        client.close()
 
         print(f"Query matched {len(results)} document(s).")
+
+        if not results:
+            print(f"Warning: no documents matched query")
+            return
 
         if args.year:
             allowed_years = set(args.year)
