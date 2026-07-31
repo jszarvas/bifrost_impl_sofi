@@ -75,6 +75,8 @@ cd {os.environ['BASE_DIR']}\n
 . settings/env_vars.sh\n
 cd {in_dir}\n
 conda activate {conda_env}\n
+find {out_dir} -wholename "{out_dir}/{component_name.replace("bifrost_", "")}__*/runtime_set" -delete\n
+find {out_dir} -wholename "{out_dir}/{component_name.replace("bifrost_", "")}__*/datadump_complete" -delete\n
 python -m {component_name} --sample_name {sample_name} --outdir {out_dir}\n
 conda deactivate\n"""
 
