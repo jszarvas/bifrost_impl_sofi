@@ -360,15 +360,15 @@ def select_components(
     where <version> is the newest version per short (numeric comparison).
     """
 
-    all_shorts = set(comp_map.keys())
+    all_shorts = comp_map.keys()
 
     if include_components and exclude_components:
         raise ValueError("Cannot use --components and --exclude together. Choose one mode.")
 
     if include_components:
-        selected_shorts = set(include_components)
+        selected_shorts = include_components
     elif exclude_components:
-        selected_shorts = all_shorts - set(exclude_components)
+        selected_shorts = [x for x in all_shorts if x not in exclude_components]
     else:
         selected_shorts = all_shorts
 
