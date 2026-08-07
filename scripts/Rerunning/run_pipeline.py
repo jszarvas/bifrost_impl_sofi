@@ -96,6 +96,8 @@ conda deactivate\n"""
 #PBS -d {out_dir}
 #PBS -v {os.environ['QSUB_KEEP_VARS']}
 #PBS -l nodes={qsub_res['nodes']}:ppn={qsub_res['ppn']},mem={qsub_res['memory']},walltime={qsub_res['walltime']}\n
+#PBS -o {out_dir}
+#PBS -e {out_dir}\n
 set -euo pipefail\n
 {Bifrost_module_cmd}"""
 
