@@ -304,7 +304,7 @@ def collect_components_from_env() -> Dict[str, List[str]]:
     If the variable is missing, empty, or contains no valid entries, returns {}.
     """
     raw = os.environ.get("BIFROST_RUN_LAUNCHER", "").strip() + " " + os.environ.get("BIFROST_COMPONENTS", "").strip() + " " + os.environ.get("BIFROST_COMPONENTS_ASM", "").strip()
-    if not raw:
+    if raw.isspace():
         return {}
 
     comp_map: Dict[str, List[str]] = {}
