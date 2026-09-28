@@ -80,8 +80,8 @@ def get_primary_data_path(doc: Dict[str, Any]) -> Optional[str]:
     """
     Return the first data path from:
       1. categories.paired_reads.summary.data[0]
-      2. categories.contigs.summary.data[0]
-      3. categories.events.summary.data
+      2. categories.events.summary.data
+      3. categories.contigs.summary.data
 
     Returns None if neither exists.
     """
@@ -89,15 +89,15 @@ def get_primary_data_path(doc: Dict[str, Any]) -> Optional[str]:
 
     paired_reads = categories.get("paired_reads", {})
     if paired_reads:
-        summary = paired_reads.get("summary", {})
+        summary = paired_reads["summary"]
     else:
-        contigs = categories.get("contigs", {})
-        if contigs:
-            summary = contigs.get("summary", {})
+        events = categories.get("events", {})
+        if events:
+            summary = events["summary"]
         else:
-            events = categories.get("events", {})
-            if events:
-                summary = events.get("summary", {})
+            contigs = categories.get("contigs", {})
+            if contigs:
+                summary = contigs["summary"]
     summmary_data = summary.get("data", [])
     if isinstance(summmary_data, list) and summmary_data:
         first = summmary_data[0]
