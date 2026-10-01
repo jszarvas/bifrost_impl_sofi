@@ -5,6 +5,7 @@ import argparse
 from typing import List, Dict
 import pandas as pd
 from itertools import zip_longest
+from time import sleep
 
 def load_config(config_file: str) -> Dict:
     """Load the YAML configuration file."""
@@ -95,7 +96,7 @@ conda deactivate\n"""
 #PBS -A {os.environ['BIFROST_JOB_ACCOUNT']}
 #PBS -d {out_dir}
 #PBS -v {os.environ['QSUB_KEEP_VARS']}
-#PBS -l nodes={qsub_res['nodes']}:ppn={qsub_res['ppn']},mem={qsub_res['memory']},walltime={qsub_res['walltime']}\n
+#PBS -l nodes={qsub_res['nodes']}:ppn={qsub_res['ppn']},mem={qsub_res['memory']},walltime={qsub_res['walltime']}
 #PBS -o {out_dir}
 #PBS -e {out_dir}\n
 set -euo pipefail\n
@@ -103,14 +104,19 @@ set -euo pipefail\n
 
     pbsjob_id = "0"
     if dryrun == False:
+        #sleep at each
+        sleep(0.25)
         #Save the job script to a file
         job_script_path = f"{out_dir}/job_{job_name}.pbs"
         with open(job_script_path, "w") as job_script_file:
             job_script_file.write(f"{qsub_job_cmd}")
 
         print(f"Submitting PBS job script: {job_script_path}")
-        p = subprocess.run(["qsub", job_script_path], check=True, capture_output=True, text=True)
-        pbsjob_id = p.stdout.strip()
+        try:
+            p = subprocess.run(["qsub", job_script_path], check=True, capture_output=True, text=True)
+            pbsjob_id = p.stdout.strip()
+        except subprocess.CalledProcessError as e:
+            print(f"[Error] {e.returncode}: {e.cmd}")
     else:
         print(qsub_job_cmd)
         print("--------------------------------")
