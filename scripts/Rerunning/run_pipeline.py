@@ -124,10 +124,15 @@ set -euo pipefail\n
 
     return pbsjob_id
 
-def main(config_file: str, dryrun: bool=False) -> None:
+def main(config_file: str, continue_from: str | None, dryrun: bool=False) -> None:
     """
     Main function to load the config, validate environment variables, and submit jobs.
     """
+
+    # Set flag as to it should continue from a given sample
+    skip_samples = False
+    if continue_from is not None:
+        skip_samples = True
 
     # Check required environment variables
     #required_env_vars = ["BIFROST_DB_KEY","BIFROST_INSTALL_DIR","BIFROST_OUTPUT_DIR", "BIFROST_INSTITUTION", "BIFROST_YEAR", "CONDA_VERSION"]
@@ -185,37 +190,50 @@ def main(config_file: str, dryrun: bool=False) -> None:
 
         run_launcher_args = {x: f" --run_mode {rmode} --component_subset {selected_components} --re_run_components" for x, rmode in zip_longest(samples, runmodes, fillvalue=runmodes[0])}
 
-
-    for component, conda_env in zip(components, conda_envs):
-        if len(samples) == len(years): #sample specific years - e.g. 2022,2024
-            for sample,runname,year,institution in zip_longest(samples,runnames,years,institutions, fillvalue=institutions[0]): #ensure accurate pairing between sample specific information
-                workdir = os.path.join(bifrost_outdir[sample],institution,year,runname)
-                print(f"workdir as {workdir}")
-                output_dir = os.path.join(workdir,sample)
-                print(f"outdir as {output_dir}")
-                pbsjob_ids[sample].append(prepare_qsub_script(conda_env,component,sample,workdir,output_dir,run_launcher_args[sample],resources,pbsjob_ids[sample][-1],dryrun))
-                if component == "bifrost_run_launcher":
-                    run_launcher_args[sample] = run_launcher_args[sample].replace("--re_run_components", "--finish")
-        else: #samples from same year
-            year = years[0]
-            print(f"Year is {year}")
-                #potentially different institutions
-            for sample,runname,year,institution in zip_longest(samples,runnames,years,institutions, fillvalue=institutions[0]):
-                workdir = os.path.join(bifrost_outdir[sample],institution,year)
-                print(f"workdir as {workdir}")
-                output_dir = os.path.join(workdir,runname)
-                print(f"outdir as {output_dir}")
-                pbsjob_ids[sample].append(prepare_qsub_script(conda_env,component,sample,workdir,output_dir,run_launcher_args[sample],resources,pbsjob_ids[sample][-1],dryrun))
-                if component == "bifrost_run_launcher":
+    if len(samples) == len(years): #sample specific years - e.g. 2022,2024
+        for sample,runname,year,institution in zip_longest(samples,runnames,years,institutions, fillvalue=institutions[0]): #ensure accurate pairing between sample specific information
+            if sample == continue_from:
+                skip_samples = False
+            if skip_samples:
+                print(f"[Skipping] {sample}")
+            else:
+                print(f"[Processing] {sample}")
+                for component, conda_env in zip(components, conda_envs):
+                    workdir = os.path.join(bifrost_outdir[sample],institution,year,runname)
+                    print(f"workdir as {workdir}")
+                    output_dir = os.path.join(workdir,sample)
+                    print(f"outdir as {output_dir}")
+                    pbsjob_ids[sample].append(prepare_qsub_script(conda_env,component,sample,workdir,output_dir,run_launcher_args[sample],resources,pbsjob_ids[sample][-1],dryrun))
+                    if component == "bifrost_run_launcher":
                         run_launcher_args[sample] = run_launcher_args[sample].replace("--re_run_components", "--finish")
+    else: #samples from same year
+        year = years[0]
+        print(f"Year is {year}")
+        #potentially different institutions
+        for sample,runname,year,institution in zip_longest(samples,runnames,years,institutions, fillvalue=institutions[0]):
+            if sample == continue_from:
+                skip_samples = False
+            if skip_samples:
+                print(f"[Skipping] {sample}")
+            else:
+                print(f"[Processing] {sample}")
+                for component, conda_env in zip(components, conda_envs):
+                    workdir = os.path.join(bifrost_outdir[sample],institution,year)
+                    print(f"workdir as {workdir}")
+                    output_dir = os.path.join(workdir,runname)
+                    print(f"outdir as {output_dir}")
+                    pbsjob_ids[sample].append(prepare_qsub_script(conda_env,component,sample,workdir,output_dir,run_launcher_args[sample],resources,pbsjob_ids[sample][-1],dryrun))
+                    if component == "bifrost_run_launcher":
+                            run_launcher_args[sample] = run_launcher_args[sample].replace("--re_run_components", "--finish")
 
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="Run Bifrost pipeline.")
 
     parser.add_argument("--config_file", type=str, help="Path to the YAML configuration file.")
+    parser.add_argument("--continued", type=str, help="Continue submitting jobs from this sample (including it)")
     parser.add_argument("--dryrun", action="store_true", help="Submits the generated PBS files for execution.")
 
     args = parser.parse_args()
 
-    main(args.config_file,args.dryrun)
+    main(args.config_file, args.continued, args.dryrun)
