@@ -71,13 +71,14 @@ conda activate {conda_env}\n
 python -m {component_name} --re_run --sample_subset {sample_name.split("___")[1]} --outdir {os.path.dirname(out_dir)} {runlauncher_args} \n
 conda deactivate\n"""
 
+    component_odir=f"{component_name.replace('bifrost_', '')}__{conda_env.split('_')[-1]}"
     component_cmd = f"""eval "$(conda shell.bash hook)"\n
 cd {os.environ['BASE_DIR']}\n
 . settings/env_vars.sh\n
 cd {in_dir}\n
 conda activate {conda_env}\n
-find {out_dir} -wholename "{out_dir}/{component_name.replace("bifrost_", "")}__*/runtime_set" -delete\n
-find {out_dir} -wholename "{out_dir}/{component_name.replace("bifrost_", "")}__*/datadump_complete" -delete\n
+find {out_dir} -wholename "{out_dir}/{component_odir}/runtime_set" -delete\n
+find {out_dir} -wholename "{out_dir}/{component_odir}/datadump_complete" -delete\n
 python -m {component_name} --sample_name {sample_name} --outdir {out_dir}\n
 conda deactivate\n"""
 
