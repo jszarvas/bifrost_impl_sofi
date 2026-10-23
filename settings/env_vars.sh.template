@@ -24,7 +24,7 @@ source "$BIFROST_SETTINGS_DIR/mongo_vars.sh"
 source "$BIFROST_SETTINGS_DIR/components.sh"
 
 # slurm
-source "$BIFROST_SETTINGS_DIR/queue_settings.sh"
+source "$BIFROST_SETTINGS_DIR/slurm_settings.sh"
 
 # enterobase
 source "$BIFROST_SETTINGS_DIR/enterobase.sh"

@@ -55,13 +55,14 @@ def has_metadata(institution: str, year: str, run_name: str, raw_data_dir: str) 
     return False
 
 def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution: str, year: str, run_name: str, script_name) -> None:
-    bifrost_qsub_options=os.environ.get("BIFROST_QSUB_OPTIONS")
+    bifrost_acct_options=os.environ.get("BIFROST_SLURM_OPTIONS")
     job_name = f"launch_bifrost_sh_{run_name}"
     #script_name = "launch_bifrost.sh"
 
     command = f'cd {script_dir};\
-    /usr/local/bin/qsub {bifrost_qsub_options} -N "{job_name}" -e {log_dir} -o {log_dir} \
-    -F "{institution} {year} {run_name} {settings_dir}" {script_dir}/{script_name}'
+    sbatch {bifrost_acct_options} -J "{job_name}" --error={log_dir} --output={log_dir} \
+    --ntasks=4 --mem=12G --time=03:00:00 \
+    {script_dir}/{script_name} {institution} {year} {run_name} {settings_dir}'
 
     #print(f"the sequencing command is {command}")
     logging.info(f"Submitting sequencing job: {command}")

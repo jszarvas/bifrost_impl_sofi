@@ -66,30 +66,32 @@ submit_sample_component() {
   echo cpus=$cpus mem=$mem >> $LOG_FILE
   local CONDA_ENV_NAME=bifrost_${STAGE}${COMPONENT_CLEAN_NAME}_${COMPONENT_VERSION}
 
-  local command=$(echo 'echo "[INFO] submit_sample_component with SAMPLE '$SAMPLE' for component '$COMPONENT' for sample_name '$sample_name'" | tee -a '$LOG_FILE';' \
-      'module load tools;' \
-      'module load '$CONDA_VERSION';' \
-      'eval "$(conda shell.bash hook)";' \
-      'conda activate "'$CONDA_ENV_NAME'";' \
-      'umask 0002;' \
-      'python -m "'$COMPONENT_NAME'" --sample_name "'$sample_name'" ;')
-  
-  echo $command >> $LOG_FILE #> command.txt
-
   #echo $command | tee -a $LOG_FILE
 
   SAMPLE_PIPELINE_ID=$(\
     echo $command | \
-    qsub \
-      -v sample_name="$sample_name",QSUB_KEEP_VARS=$QSUB_KEEP_VARS \
-      -d $PWD \
+    sbatch \
+      -J "${SAMPLE}_${COMPONENT_NAME}_bf" \
+      --export=sample_name,$BIFROST_KEEP_VARS \
+      -D $PWD \
+      --parsable \
+      --dependency=afterany:$PREVIOUS_ID \
       -A $BIFROST_JOB_ACCOUNT \
-      -W depend=afterany:$PREVIOUS_ID \
-      -W umask=002 \
-      -N "${SAMPLE}_${COMPONENT_NAME}_bf" \
-      -W x=advres:$BIFROST_RESNODES \
-      -l nodes=g-05-c0359:ppn=$cpus,mem=$mem,walltime=$time \
-    );
+      --reservation=$BIFROST_RESNODES \
+      --partition=$BIFROST_PARTITION \
+      --nodelist="g-01-c0010" \
+      --ntasks=$cpus --mem=$mem --time=$time <<EOF
+#!/bin/bash
+
+echo "[INFO] submit_sample_component with SAMPLE ${SAMPLE} for component ${COMPONENT} for sample_name ${sample_name}" | tee -a ${LOG_FILE}
+module load tools
+module load ${CONDA_VERSION}
+eval $(conda shell.bash hook)
+conda activate ${CONDA_ENV_NAME}
+umask 0002
+python -m ${COMPONENT_NAME} --sample_name ${sample_name}
+EOF
+);
   
   #log_message "Sample component job submitted with ID: $SAMPLE_PIPELINE_ID"
   echo $SAMPLE_PIPELINE_ID
@@ -110,16 +112,18 @@ unset BIFROST_SAMPLE_JOB_IDS
 
 log_message "Initializing sample pipeline job submission"
 
-BIFROST_SAMPLE_START_ID=$(echo \
-"echo Run started" | \
-qsub \
+BIFROST_SAMPLE_START_ID=$(sbatch \
 -A $BIFROST_JOB_ACCOUNT \
--h \
--N "bf_$run.name" \
--d $PWD \
--l nodes=1:ppn=1,mem=1gb,walltime=$BIFROST_JOB_TIME \
--W x=advres:$BIFROST_RESNODES \
--W umask=002
+-H \
+-J "bf_$run.name" \
+-D $PWD \
+--parsable \
+--reservation=$BIFROST_RESNODES \
+--partition=$BIFROST_PARTITION \
+--ntasks=1 --mem=1G --time=$BIFROST_JOB_TIME << EOF
+#!/bin/sh
+echo Run started
+EOF
 );
 
 log_message "Initial job submitted with ID: $BIFROST_SAMPLE_START_ID"
