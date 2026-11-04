@@ -1,5 +1,5 @@
 
-	# KMA specific config
+# KMA specific config
 
 
 # Logging Configuration
@@ -72,6 +72,8 @@ submit_sample_component() {
     echo $command | \
     sbatch \
       -J "${SAMPLE}_${COMPONENT_NAME}_bf" \
+      --error "%x.%a.err.log" \
+      --output "%x.%a.out.log" \
       --export=sample_name,$BIFROST_KEEP_VARS \
       -D $PWD \
       --parsable \
@@ -117,6 +119,8 @@ BIFROST_SAMPLE_START_ID=$(sbatch \
 -H \
 -J "bf_$run.name" \
 -D $PWD \
+--error "%x.%a.err.log" \
+--output "%x.%a.out.log" \
 --parsable \
 --reservation=$BIFROST_RESNODES \
 --partition=$BIFROST_PARTITION \

@@ -49,6 +49,8 @@ sbatch \
 --dependency=afterany:$BIFROST_SAMPLE_JOB_IDS \
 -A $BIFROST_JOB_ACCOUNT \
 -D $PWD \
+--error "%x.%a.err.log" \
+--output "%x.%a.out.log" \
 --parsable \
 --mail-type=FAIL --mail-user=${!recipient_var} \
 --reservation=$BIFROST_RESNODES \
