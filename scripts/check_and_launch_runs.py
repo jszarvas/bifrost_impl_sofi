@@ -60,7 +60,7 @@ def launch_bifrost(script_dir: str, log_dir: str, settings_dir: str, institution
     #script_name = "launch_bifrost.sh"
 
     command = f'cd {script_dir};\
-    sbatch {bifrost_acct_options} -J "{job_name}" --error={log_dir} --output={log_dir} \
+    sbatch {bifrost_acct_options} -J "{job_name}" --error="{log_dir}/{script_name}.err.log" --output="{log_dir}/{script_name}.out.log"  --export="$BIFROST_KEEP_VARS"\
     --ntasks=4 --mem=12G --time=03:00:00 \
     {script_dir}/{script_name} {institution} {year} {run_name} {settings_dir}'
 
