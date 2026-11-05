@@ -21,16 +21,6 @@ log_message "Finalizing statuses for run $run.name with run_launcher"
 CONDA_ENV_NAME=bifrost_${BIFROST_STAGE}_${BIFROST_RUN_LAUNCHER/bifrost_/}
 COMPONENT_NAME=${BIFROST_RUN_LAUNCHER%_v*}
 
-finish_command=$(echo 'echo "[INFO] run_launcher with RUN '$run.name'";' \
-    'module load tools;' \
-    'module load '$CONDA_VERSION';' \
-    'eval "$(conda shell.bash hook)";' \
-    'conda activate "'$CONDA_ENV_NAME'";' \
-    'umask 0002;' \
-    'python -m "'$COMPONENT_NAME'" --outdir $PWD --run_type '$run.type' --component_subset '$run.component_subset' --finish > complete.txt;')
-
-echo $finish_command >> $LOG_FILE #> command.txt
-
 # Ensure necessary variables are inherited from the prescript
 log_message "Using BIFROST_JOB_MEM: $BIFROST_JOB_MEM"
 log_message "Using BIFROST_JOB_CPUS: $BIFROST_JOB_CPUS"
