@@ -66,10 +66,7 @@ submit_sample_component() {
   echo cpus=$cpus mem=$mem >> $LOG_FILE
   local CONDA_ENV_NAME=bifrost_${STAGE}${COMPONENT_CLEAN_NAME}_${COMPONENT_VERSION}
 
-  #echo $command | tee -a $LOG_FILE
-
   SAMPLE_PIPELINE_ID=$(\
-    echo $command | \
     sbatch \
       -J "${SAMPLE}_${COMPONENT_NAME}_bf" \
       --error "%x.%a.err.log" \
