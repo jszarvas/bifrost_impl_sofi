@@ -52,7 +52,7 @@ sbatch \
 --error "%x.%a.err.log" \
 --output "%x.%a.out.log" \
 --parsable \
---mail-type=FAIL --mail-user=${!recipient_var} \
+--mail-type=ALL --mail-user=${!recipient_var} \
 --reservation=$BIFROST_RESNODES \
 --partition=$BIFROST_PARTITION \
 --ntasks=$BIFROST_JOB_CPUS --mem=$BIFROST_JOB_MEM --time=$BIFROST_JOB_TIME << EOF
